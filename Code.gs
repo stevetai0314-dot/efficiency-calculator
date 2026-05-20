@@ -52,7 +52,7 @@ function getEmployees_() {
 
 function saveRecords_(records, date) {
   const sheet = getOrCreateRecordSheet_();
-  const now   = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
+  const now   = Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyyy/MM/dd HH:mm:ss');
   const rows  = records.map(r => [
     date, now, r.empId, r.empName, r.spec, r.length, r.rolls, r.coeff, r.efficiency
   ]);
