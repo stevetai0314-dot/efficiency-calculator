@@ -54,10 +54,12 @@ function saveRecords_(records, date) {
   const sheet = getOrCreateRecordSheet_();
   const now   = Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyyy/MM/dd HH:mm:ss');
   const rows  = records.map(r => [
-    date, now, r.empId, r.empName, r.spec, r.length, r.rolls, r.coeff, r.efficiency
+    date, now, r.empId, r.empName,
+    r.workHours, r.abnormalHours, r.prodAbnormalHours,
+    r.spec, r.length, r.rolls, r.coeff, r.efficiency
   ]);
   if (rows.length > 0) {
-    sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 9).setValues(rows);
+    sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 12).setValues(rows);
   }
 }
 
@@ -66,10 +68,12 @@ function getOrCreateRecordSheet_() {
   let sheet = ss.getSheetByName('記錄');
   if (!sheet) {
     sheet = ss.insertSheet('記錄');
-    sheet.getRange(1, 1, 1, 9).setValues([[
-      '生產日期', '儲存時間', '工號', '員工姓名', '規格', '碼長', '捲數', '係數', '效率換算'
+    sheet.getRange(1, 1, 1, 12).setValues([[
+      '生產日期', '儲存時間', '工號', '員工姓名',
+      '上班時數', '異常時數', '生產異常帶時數',
+      '規格', '碼長', '捲數', '係數', '效率換算'
     ]]);
-    sheet.getRange(1, 1, 1, 9).setFontWeight('bold');
+    sheet.getRange(1, 1, 1, 12).setFontWeight('bold');
   }
   return sheet;
 }

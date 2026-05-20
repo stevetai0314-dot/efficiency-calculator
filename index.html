@@ -17,6 +17,9 @@ body { font-family: system-ui, -apple-system, sans-serif; background: #111827; c
 #emp-input { width: 100%; background: #111827; border: 1px solid #374151; border-radius: 6px; color: #e5e7eb; padding: 7px 10px; font-size: 14px; }
 #emp-input:focus { outline: none; border-color: #3b82f6; }
 #emp-ac { position: absolute; top: 100%; left: 0; right: 0; background: #1f2937; border: 1px solid #374151; border-top: none; border-radius: 0 0 6px 6px; z-index: 200; max-height: 220px; overflow-y: auto; display: none; box-shadow: 0 8px 16px rgba(0,0,0,0.4); }
+#hours-group { display: flex; gap: 12px; align-items: flex-end; }
+#hours-group input[type="number"] { width: 80px; background: #111827; border: 1px solid #374151; border-radius: 6px; color: #e5e7eb; padding: 7px 10px; font-size: 14px; text-align: right; }
+#hours-group input[type="number"]:focus { outline: none; border-color: #3b82f6; }
 #header-hint { font-size: 12px; color: #6b7280; align-self: center; margin-left: auto; }
 
 /* 主內容 */
@@ -74,6 +77,20 @@ body { font-family: system-ui, -apple-system, sans-serif; background: #111827; c
     <label for="emp-input">員工（工號或姓名）</label>
     <input type="text" id="emp-input" placeholder="輸入工號或姓名…" autocomplete="off">
     <div id="emp-ac"></div>
+  </div>
+  <div id="hours-group">
+    <div>
+      <label for="work-hours">上班時數</label>
+      <input type="number" id="work-hours" min="0" step="0.5" placeholder="8">
+    </div>
+    <div>
+      <label for="abnormal-hours">異常時數</label>
+      <input type="number" id="abnormal-hours" min="0" step="0.5" placeholder="0">
+    </div>
+    <div>
+      <label for="prod-abnormal-hours">生產異常帶時數</label>
+      <input type="number" id="prod-abnormal-hours" min="0" step="0.5" placeholder="0">
+    </div>
   </div>
   <div id="header-hint">請先選擇日期與員工</div>
 </div>
@@ -509,18 +526,25 @@ function onSave() {
   const validRows = getRows().filter(r => r.spec && r.length && r.rolls > 0 && r.coeff > 0);
   if (!validRows.length) { showMsg('沒有有效的產量記錄', 'error'); return; }
 
+  const workHours        = parseFloat(document.getElementById('work-hours').value)        || 0;
+  const abnormalHours    = parseFloat(document.getElementById('abnormal-hours').value)    || 0;
+  const prodAbnormalHours = parseFloat(document.getElementById('prod-abnormal-hours').value) || 0;
+
   const btn = document.getElementById('btn-save');
   btn.disabled = true;
   btn.textContent = '儲存中…';
 
   const records = validRows.map(r => ({
-    empId:      currentEmp.id,
-    empName:    currentEmp.name,
-    spec:       r.spec,
-    length:     r.length,
-    rolls:      r.rolls,
-    coeff:      r.coeff,
-    efficiency: r.efficiency,
+    empId:           currentEmp.id,
+    empName:         currentEmp.name,
+    workHours,
+    abnormalHours,
+    prodAbnormalHours,
+    spec:            r.spec,
+    length:          r.length,
+    rolls:           r.rolls,
+    coeff:           r.coeff,
+    efficiency:      r.efficiency,
   }));
 
   // no-cors：送出後無法讀回應，樂觀地視為成功
@@ -533,6 +557,9 @@ function onSave() {
   showMsg(`已送出 ${validRows.length} 筆（約 3 秒後寫入 Sheets）`, 'success');
   clearRows();
   document.getElementById('emp-input').value = '';
+  document.getElementById('work-hours').value = '';
+  document.getElementById('abnormal-hours').value = '';
+  document.getElementById('prod-abnormal-hours').value = '';
   currentEmp = null;
   document.getElementById('header-hint').textContent = '請先選擇日期與員工';
   updateFooter();
