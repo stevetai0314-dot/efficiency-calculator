@@ -214,8 +214,8 @@ function getReport_(system) {
     const eff     = Number(data[i][effIdx]) || 0;
     if (!dateStr || eff === 0) continue;
 
-    // 日期格式：yyyy/MM/dd
-    const parts = dateStr.split('/');
+    // 日期格式：yyyy/MM/dd 或 yyyy-MM-dd
+    const parts = dateStr.split(/[\/\-]/);
     if (parts.length < 3) continue;
     const year  = Number(parts[0]);
     const month = Number(parts[1]);
