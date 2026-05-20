@@ -330,7 +330,7 @@ function bindRowEvents(div, id) {
     const rolls = parseFloat(rollsInput.value) || 0;
     const entry = (cat && spec && ITEMS[cat]) ? ITEMS[cat][spec] : null;
     const coeff = entry ? entry.coefficient : null;
-    div.querySelector('[data-field="coeff"]').textContent = coeff !== null ? coeff : '—';
+    div.querySelector('[data-field="coeff"]').textContent = coeff !== null ? fmtCoeff(coeff) : '—';
     const eff = (coeff !== null && rolls > 0) ? +(coeff * rolls).toFixed(2) : '—';
     div.querySelector('[data-field="eff"]').textContent = eff;
     updateFooter();
@@ -375,6 +375,11 @@ function onSave() {
   document.getElementById('header-hint').textContent = '請先選擇日期與員工';
   updateFooter();
   btn.textContent = '儲存紀錄';
+}
+
+function fmtCoeff(n) {
+  const s = n.toString();
+  return s.includes('.') ? s : s + '.0';
 }
 
 // ── JSONP 工具 ────────────────────────────────────────────────

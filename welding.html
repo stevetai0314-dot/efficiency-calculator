@@ -326,8 +326,8 @@ function bindRowEvents(div, id) {
     const item  = itemSel.value;
     const spec  = specSel.value;
     const entry = (item && spec && ITEMS[item]) ? ITEMS[item][spec] : null;
-    div.querySelector('[data-field="coeff"]').textContent = entry ? entry.coefficient : '—';
-    div.querySelector('[data-field="pts"]').textContent   = entry ? entry.points      : '—';
+    div.querySelector('[data-field="coeff"]').textContent = entry ? fmtCoeff(entry.coefficient) : '—';
+    div.querySelector('[data-field="pts"]').textContent   = entry ? entry.points : '—';
     const eff = entry ? +(entry.coefficient * entry.points).toFixed(2) : '—';
     div.querySelector('[data-field="eff"]').textContent   = eff;
     updateFooter();
@@ -372,6 +372,11 @@ function onSave() {
   document.getElementById('header-hint').textContent = '請先選擇日期與員工';
   updateFooter();
   btn.textContent = '儲存紀錄';
+}
+
+function fmtCoeff(n) {
+  const s = n.toString();
+  return s.includes('.') ? s : s + '.0';
 }
 
 // ── JSONP 工具 ────────────────────────────────────────────────
