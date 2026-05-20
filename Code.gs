@@ -75,7 +75,7 @@ function getSpecs_(system) {
     // H 欄（index 7）起為各碼長欄位名稱
     const lengths = [];
     for (let c = 7; c < data[headerRow].length; c++) {
-      const h = String(data[headerRow][c]).trim();
+      const h = String(data[headerRow][c]).trim().replace(/\n/g, ' ');
       if (h) lengths.push(h);
     }
 
@@ -84,7 +84,10 @@ function getSpecs_(system) {
       const name = String(data[i][5] || '').trim();
       if (!name) continue;
       const strands      = Number(data[i][6]) || 0;
-      const coefficients = lengths.map((_, ci) => Number(data[i][7 + ci]) || 0);
+      const coefficients = lengths.map((_, ci) => {
+        const v = Number(data[i][7 + ci]) || 0;
+        return Math.round(v * 10000) / 10000;
+      });
       specs[name] = { strands, coefficients };
     }
     return { specs, lengths };

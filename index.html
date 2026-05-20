@@ -187,7 +187,8 @@ function lookupCoeff(spec, length) {
   if (!row || !row.coefficients) return null;
   const idx = LENGTHS.indexOf(length);
   if (idx === -1) return null;
-  return row.coefficients[idx];
+  const c = row.coefficients[idx];
+  return c > 0 ? c : null;
 }
 
 // ── 員工（JSONP）────────────────────────────────────────────
