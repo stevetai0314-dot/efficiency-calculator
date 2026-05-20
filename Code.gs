@@ -142,19 +142,22 @@ function saveRecords_(records, date, system) {
     rows = records.map(r => [
       date, now, r.empId, r.empName,
       r.workHours, r.abnormalHours,
-      r.item, r.spec, r.coeff, r.points, r.efficiency
+      r.item, r.spec, r.coeff, r.points, r.efficiency,
+      r.abnormalReason || '', r.newbieDeduct || ''
     ]);
   } else if (system === 'backing') {
     rows = records.map(r => [
       date, now, r.empId, r.empName,
       r.workHours, r.abnormalHours,
-      r.category, r.spec, r.coeff, r.rolls, r.efficiency
+      r.category, r.spec, r.coeff, r.rolls, r.efficiency,
+      r.abnormalReason || '', r.newbieDeduct || ''
     ]);
   } else {
     rows = records.map(r => [
       date, now, r.empId, r.empName,
       r.workHours, r.abnormalHours, r.prodAbnormalHours,
-      r.spec, r.length, r.rolls, r.coeff, r.efficiency
+      r.spec, r.length, r.rolls, r.coeff, r.efficiency,
+      r.abnormalReason || '', r.prodAbnormalReason || '', r.newbieDeduct || ''
     ]);
   }
 
@@ -172,13 +175,16 @@ function getOrCreateSheet_(name, system) {
     let headers;
     if (system === 'welding') {
       headers = ['生產日期','儲存時間','工號','員工姓名','上班時數','異常時數',
-                 '項目','規格分類','係數','點數','效率換算'];
+                 '項目','規格分類','係數','點數','效率換算',
+                 '異常原因','新人扣時%'];
     } else if (system === 'backing') {
       headers = ['生產日期','儲存時間','工號','員工姓名','上班時數','異常時數',
-                 '碼長','規格分類','係數','卷數','效率換算'];
+                 '碼長','規格分類','係數','卷數','效率換算',
+                 '異常原因','新人扣時%'];
     } else {
       headers = ['生產日期','儲存時間','工號','員工姓名','上班時數','異常時數',
-                 '生產異常帶時數','規格','碼長','捲數','係數','效率換算'];
+                 '生產異常帶時數','規格','碼長','捲數','係數','效率換算',
+                 '異常原因','生產異常帶原因','新人扣時%'];
     }
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
     sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');

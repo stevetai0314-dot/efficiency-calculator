@@ -98,6 +98,17 @@
           <label class="form-label small mb-1">異常時數</label>
           <input type="number" id="abnormal-hours" class="form-control form-control-sm text-end" min="0" step="0.5" placeholder="0" style="width:80px">
         </div>
+        <div class="col-auto">
+          <label class="form-label small mb-1">異常原因</label>
+          <input type="text" id="abnormal-reason" class="form-control form-control-sm" placeholder="說明…" style="width:140px">
+        </div>
+        <div class="col-auto">
+          <label class="form-label small mb-1">新人扣時%</label>
+          <div class="input-group input-group-sm" style="width:90px">
+            <input type="number" id="newbie-deduct" class="form-control form-control-sm text-end" min="0" max="100" step="1" placeholder="0">
+            <span class="input-group-text">%</span>
+          </div>
+        </div>
         <div class="col">
           <span id="header-hint" class="text-muted small">請先選擇日期與員工</span>
         </div>
@@ -330,8 +341,10 @@ function onSave() {
   const validRows = getRows().filter(r => r.item && r.spec && r.efficiency > 0);
   if (!validRows.length) { showMsg('沒有有效的產量記錄', 'error'); return; }
 
-  const workHours     = parseFloat(document.getElementById('work-hours').value)     || 0;
-  const abnormalHours = parseFloat(document.getElementById('abnormal-hours').value) || 0;
+  const workHours      = parseFloat(document.getElementById('work-hours').value)      || 0;
+  const abnormalHours  = parseFloat(document.getElementById('abnormal-hours').value)  || 0;
+  const abnormalReason = document.getElementById('abnormal-reason').value.trim();
+  const newbieDeduct   = parseFloat(document.getElementById('newbie-deduct').value)   || '';
 
   const btn = document.getElementById('btn-save');
   btn.disabled = true; btn.textContent = '儲存中…';
@@ -340,6 +353,7 @@ function onSave() {
     empId: currentEmp.id, empName: currentEmp.name,
     workHours, abnormalHours,
     item: r.item, spec: r.spec, coeff: r.coeff, points: r.points, efficiency: r.efficiency,
+    abnormalReason, newbieDeduct,
   }));
 
   fetch(GAS_URL, {
@@ -352,6 +366,8 @@ function onSave() {
   document.getElementById('emp-input').value = '';
   document.getElementById('work-hours').value = '';
   document.getElementById('abnormal-hours').value = '';
+  document.getElementById('abnormal-reason').value = '';
+  document.getElementById('newbie-deduct').value = '';
   currentEmp = null;
   document.getElementById('header-hint').textContent = '請先選擇日期與員工';
   updateFooter();
