@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>效率換算工具</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; background: #111827; color: #e5e7eb; min-height: 100vh; display: flex; flex-direction: column; }
+
+/* 頂部 */
+#header { background: #1f2937; border-bottom: 1px solid #374151; padding: 12px 20px; display: flex; gap: 16px; align-items: flex-end; flex-shrink: 0; flex-wrap: wrap; }
+#header label { font-size: 11px; color: #9ca3af; display: block; margin-bottom: 4px; letter-spacing: 0.05em; }
+#header input[type="date"], #header select { background: #111827; border: 1px solid #374151; border-radius: 6px; color: #e5e7eb; padding: 7px 10px; font-size: 14px; }
+#header input[type="date"]:focus, #header select:focus { outline: none; border-color: #3b82f6; }
+#emp-select { min-width: 200px; }
+#header-hint { font-size: 12px; color: #6b7280; align-self: center; margin-left: auto; }
+
+/* 主內容 */
+#main { flex: 1; padding: 16px 20px; overflow-y: auto; }
+
+/* 表格 */
+.table-head { display: grid; grid-template-columns: 200px 180px 90px 68px 100px 36px; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid #374151; margin-bottom: 8px; }
+.table-head span { font-size: 11px; color: #6b7280; text-align: center; letter-spacing: 0.04em; }
+.table-head span:first-child { text-align: left; }
+
+.row { display: grid; grid-template-columns: 200px 180px 90px 68px 100px 36px; gap: 6px; margin-bottom: 6px; align-items: center; }
+.row input[type="text"], .row input[type="number"], .row select {
+  width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 6px;
+  color: #e5e7eb; padding: 7px 9px; font-size: 14px;
+}
+.row input[type="number"] { text-align: right; }
+.row input:focus, .row select:focus { outline: none; border-color: #3b82f6; }
+.cell-coeff, .cell-eff { border-radius: 6px; padding: 7px 9px; font-size: 14px; text-align: center; }
+.cell-coeff { background: #111827; border: 1px solid #1f2937; color: #60a5fa; }
+.cell-eff   { background: #1e3a5f; border: 1px solid #1e3a5f; color: #fff; font-weight: 600; }
+.btn-del { background: none; border: none; color: #4b5563; font-size: 18px; cursor: pointer; padding: 0 4px; line-height: 1; }
+.btn-del:hover { color: #ef4444; }
+
+/* Autocomplete */
+.spec-wrap { position: relative; }
+.ac-list { position: absolute; top: 100%; left: 0; right: 0; background: #1f2937; border: 1px solid #374151; border-top: none; border-radius: 0 0 6px 6px; z-index: 100; max-height: 200px; overflow-y: auto; display: none; box-shadow: 0 8px 16px rgba(0,0,0,0.4); }
+.ac-item { padding: 7px 10px; font-size: 13px; cursor: pointer; }
+.ac-item:hover, .ac-item.ac-active { background: #1e3a5f; }
+.ac-item mark { background: none; color: #60a5fa; font-weight: 700; }
+
+/* 底部 */
+#footer { background: #1f2937; border-top: 1px solid #374151; padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+#summary { font-size: 13px; color: #9ca3af; }
+#summary b { color: #e5e7eb; }
+#total-label { color: #9ca3af; }
+#total-eff { color: #60a5fa; font-size: 17px; font-weight: 700; margin-left: 4px; }
+#btn-save { margin-left: auto; background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 9px 28px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .15s; }
+#btn-save:hover:not(:disabled) { background: #1d4ed8; }
+#btn-save:disabled { background: #374151; color: #6b7280; cursor: not-allowed; }
+
+/* 狀態訊息 */
+#msg { position: fixed; top: 16px; right: 16px; padding: 10px 18px; border-radius: 8px; font-size: 14px; z-index: 200; opacity: 0; transition: opacity .2s; pointer-events: none; }
+#msg.show-success { background: #065f46; color: #6ee7b7; opacity: 1; }
+#msg.show-error   { background: #7f1d1d; color: #fca5a5; opacity: 1; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div>
+    <label for="prod-date">生產日期</label>
+    <input type="date" id="prod-date">
+  </div>
+  <div>
+    <label for="emp-select">員工</label>
+    <select id="emp-select">
+      <option value="">— 選擇員工 —</option>
+    </select>
+  </div>
+  <div id="header-hint">請先選擇日期與員工</div>
+</div>
+
+<div id="main">
+  <div class="table-head">
+    <span>規格</span>
+    <span>碼長</span>
+    <span>捲數</span>
+    <span>係數</span>
+    <span>效率換算</span>
+    <span></span>
+  </div>
+  <div id="rows"></div>
+</div>
+
+<div id="footer">
+  <div id="summary">共 <b id="row-count">0</b> 筆　<span id="total-label">合計效率：</span><span id="total-eff">0.00</span></div>
+  <button id="btn-save" disabled>儲存紀錄</button>
+</div>
+
+<div id="msg"></div>
+
+<script>
+// ── 係數資料 ──────────────────────────────────────────────
+const LENGTHS = [
+  '25M/YD','50M/YD','PSĐB 25M/YD','100M/YD',
+  'PSĐB 50M/YD','PSĐB 100M/YD',
+  '大捲軸 cuộn lớn','二次分條 PS lần 2 - SKY',
+  '225M + 1 sợi','225M'
+];
+
+// 每筆對應 LENGTHS 順序: [25M, 50M, PSDB25, 100M, PSDB50, PSDB100, 大捲軸, 二次分條, 225M+1, 225M]
+const SPECS = {
+  '1012A':     [2.2,  1.8,  1.8,  1.2,  1.2,  1.1,  0.9, 0.85, 0.65, 0.7],
+  '1210A':     [1.8,  1.2,  1.2,  1.1,  1.1,  1.05, 0.9, 0.85, 0.65, 0.7],
+  '168A':      [1.2,  1.1,  1.1,  1.05, 1.05, 1.0,  0.9, 0.85, 0.65, 0.7],
+  '206A':      [1.05, 1.0,  1.0,  0.95, 0.95, 0.9,  0.9, 0.85, 0.65, 0.7],
+  '207A':      [1.1,  1.05, 1.05, 1.0,  1.0,  0.95, 0.9, 0.85, 0.65, 0.7],
+  '255A':      [1.0,  0.95, 0.95, 0.9,  0.9,  0.85, 0.9, 0.85, 0.65, 0.7],
+  '256A':      [1.05, 1.0,  1.0,  0.95, 0.95, 0.9,  0.9, 0.85, 0.65, 0.7],
+  '304A':      [0.95, 0.9,  0.9,  0.85, 0.85, 0.8,  0.9, 0.85, 0.65, 0.7],
+  '305A':      [1.0,  0.95, 0.95, 0.9,  0.9,  0.85, 0.9, 0.85, 0.65, 0.7],
+  '324A':      [0.95, 0.9,  0.9,  0.85, 0.85, 0.8,  0.9, 0.85, 0.65, 0.7],
+  '383A':      [0.9,  0.85, 0.85, 0.8,  0.8,  0.75, 0.9, 0.85, 0.65, 0.7],
+  '384A':      [0.95, 0.9,  0.9,  0.85, 0.85, 0.8,  0.9, 0.85, 0.65, 0.7],
+  '502A':      [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '503A':      [0.9,  0.85, 0.85, 0.8,  0.8,  0.75, 0.9, 0.85, 0.65, 0.7],
+  '552A':      [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '752A':      [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '102A':      [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '251102A':   [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '252102A':   [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '107A':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '110A':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '127A':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '153A':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '156A':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '163A':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '169A':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '175A':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  'N255A':     [1.0,  0.95, 0.95, 0.9,  0.9,  0.85, 0.9, 0.85, 0.65, 0.7],
+  'N107A':     [1.1,  1.05, 1.05, 1.0,  1.0,  0.95, 0.9, 0.85, 0.65, 0.7],
+  '1012B':     [2.2,  1.8,  1.8,  1.2,  1.2,  1.1,  0.9, 0.85, 0.65, 0.7],
+  '1210B':     [1.8,  1.2,  1.2,  1.1,  1.1,  1.05, 0.9, 0.85, 0.65, 0.7],
+  '168B':      [1.2,  1.1,  1.1,  1.05, 1.05, 1.0,  0.9, 0.85, 0.65, 0.7],
+  '206B':      [1.05, 1.0,  1.0,  0.95, 0.95, 0.9,  0.9, 0.85, 0.65, 0.7],
+  '207B':      [1.1,  1.05, 1.05, 1.0,  1.0,  0.95, 0.9, 0.85, 0.65, 0.7],
+  '255B':      [1.0,  0.95, 0.95, 0.9,  0.9,  0.85, 0.9, 0.85, 0.65, 0.7],
+  '256B':      [1.05, 1.0,  1.0,  0.95, 0.95, 0.9,  0.9, 0.85, 0.65, 0.7],
+  '304B':      [0.95, 0.9,  0.9,  0.85, 0.85, 0.8,  0.9, 0.85, 0.65, 0.7],
+  '305B':      [1.0,  0.95, 0.95, 0.9,  0.9,  0.85, 0.9, 0.85, 0.65, 0.7],
+  '324B':      [0.95, 0.9,  0.9,  0.85, 0.85, 0.8,  0.9, 0.85, 0.65, 0.7],
+  '383B':      [0.9,  0.85, 0.85, 0.8,  0.8,  0.75, 0.9, 0.85, 0.65, 0.7],
+  '384B':      [0.95, 0.9,  0.9,  0.85, 0.85, 0.8,  0.9, 0.85, 0.65, 0.7],
+  '502B':      [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '251502B':   [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '503B':      [0.9,  0.85, 0.85, 0.8,  0.8,  0.75, 0.9, 0.85, 0.65, 0.7],
+  '752B':      [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '102B':      [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '251102B':   [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '252102B':   [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '107B':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '110B':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '201110B':   [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '120B':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '125B':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '127B':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '153B':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '156B':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '163B':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '169B':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '170B':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '175B':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  'N107B':     [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '102C':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '166C':      [1.05, 1.0,  1.0,  0.95, 0.95, 0.9,  0.9, 0.85, 0.65, 0.7],
+  '205C':      [1.0,  0.95, 0.95, 0.9,  0.9,  0.85, 0.9, 0.85, 0.65, 0.7],
+  '254C':      [0.95, 0.9,  0.9,  0.85, 0.85, 0.8,  0.9, 0.85, 0.65, 0.7],
+  '383C':      [0.9,  0.85, 0.85, 0.8,  0.8,  0.75, 0.9, 0.85, 0.65, 0.7],
+  '502C':      [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '38Q':       [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '254S':      [0.95, 0.9,  0.9,  0.85, 0.85, 0.8,  0.9, 0.85, 0.65, 0.7],
+  '383S':      [0.9,  0.85, 0.85, 0.8,  0.8,  0.75, 0.9, 0.85, 0.65, 0.7],
+  '502S':      [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '107S':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '127S':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '132S':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '156S':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '167Y':      [1.1,  1.05, 1.05, 1.0,  1.0,  0.95, 0.9, 0.85, 0.65, 0.7],
+  '206Y':      [1.05, 1.0,  1.0,  0.95, 0.95, 0.9,  0.9, 0.85, 0.65, 0.7],
+  '255Y':      [1.0,  0.95, 0.95, 0.9,  0.9,  0.85, 0.9, 0.85, 0.65, 0.7],
+  '304Y':      [0.95, 0.9,  0.9,  0.85, 0.85, 0.8,  0.9, 0.85, 0.65, 0.7],
+  '383Y':      [0.9,  0.85, 0.85, 0.8,  0.8,  0.75, 0.9, 0.85, 0.65, 0.7],
+  '502Y':      [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '107Y':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '110Y':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '127Y':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '153Y':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '168ATN':    [1.2,  1.1,  1.1,  1.05, 1.05, 1.0,  0.9, 0.85, 0.65, 0.7],
+  '207ATN':    [1.1,  1.05, 1.05, 1.0,  1.0,  0.95, 0.9, 0.85, 0.65, 0.7],
+  '255ATN':    [1.0,  0.95, 0.95, 0.9,  0.9,  0.85, 0.9, 0.85, 0.65, 0.7],
+  '256ATN':    [1.05, 1.0,  1.0,  0.95, 0.95, 0.9,  0.9, 0.85, 0.65, 0.7],
+  '305ATN':    [1.0,  0.95, 0.95, 0.9,  0.9,  0.85, 0.9, 0.85, 0.65, 0.7],
+  '324ATN':    [0.95, 0.9,  0.9,  0.85, 0.85, 0.8,  0.9, 0.85, 0.65, 0.7],
+  '383ATN':    [0.9,  0.85, 0.85, 0.8,  0.8,  0.75, 0.9, 0.85, 0.65, 0.7],
+  '384ATN':    [0.95, 0.9,  0.9,  0.85, 0.85, 0.8,  0.9, 0.85, 0.65, 0.7],
+  '503ATN':    [0.9,  0.85, 0.85, 0.8,  0.8,  0.75, 0.9, 0.85, 0.65, 0.7],
+  '552ATN':    [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '752ATN':    [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '102ATN':    [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '251102ATN': [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '110ATN':    [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '127ATN':    [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '150ATN':    [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '156ATN':    [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  'N146ATN':   [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '175ATN':    [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '168BTN':    [1.2,  1.1,  1.1,  1.05, 1.05, 1.0,  0.9, 0.85, 0.65, 0.7],
+  '205BTN':    [1.0,  0.95, 0.95, 0.9,  0.9,  0.85, 0.9, 0.85, 0.65, 0.7],
+  '206BTN':    [1.05, 1.0,  1.0,  0.95, 0.95, 0.9,  0.9, 0.85, 0.65, 0.7],
+  '207BTN':    [1.1,  1.05, 1.05, 1.0,  1.0,  0.95, 0.9, 0.85, 0.65, 0.7],
+  '255BTN':    [1.0,  0.95, 0.95, 0.9,  0.9,  0.85, 0.9, 0.85, 0.65, 0.7],
+  '256BTN':    [1.05, 1.0,  1.0,  0.95, 0.95, 0.9,  0.9, 0.85, 0.65, 0.7],
+  '304BTN':    [0.95, 0.9,  0.9,  0.85, 0.85, 0.8,  0.9, 0.85, 0.65, 0.7],
+  '305BTN':    [1.0,  0.95, 0.95, 0.9,  0.9,  0.85, 0.9, 0.85, 0.65, 0.7],
+  '324BTN':    [0.95, 0.9,  0.9,  0.85, 0.85, 0.8,  0.9, 0.85, 0.65, 0.7],
+  '383BTN':    [0.9,  0.85, 0.85, 0.8,  0.8,  0.75, 0.9, 0.85, 0.65, 0.7],
+  '384BTN':    [0.95, 0.9,  0.9,  0.85, 0.85, 0.8,  0.9, 0.85, 0.65, 0.7],
+  '503BTN':    [0.9,  0.85, 0.85, 0.8,  0.8,  0.75, 0.9, 0.85, 0.65, 0.7],
+  '251502BTN': [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '752BTN':    [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '102BTN':    [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '251102BTN': [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '110BTN':    [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '127BTN':    [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '150BTN':    [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  'N156BTN':   [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '110MT':     [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '156MT':     [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '132H':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '502L':      [0.85, 0.8,  0.8,  0.75, 0.75, 0.7,  0.9, 0.85, 0.65, 0.7],
+  '50EA':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '50EB':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '50E':       [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '50E6':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '100AZ':     [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '1101R':     [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+  '102D':      [0.8,  0.75, 0.75, 0.7,  0.7,  0.65, 0.9, 0.85, 0.65, 0.7],
+};
+
+const SPEC_KEYS = Object.keys(SPECS);
+
+function lookupCoeff(spec, length) {
+  const row = SPECS[spec];
+  if (!row) return null;
+  const idx = LENGTHS.indexOf(length);
+  if (idx === -1) return null;
+  return row[idx];
+}
+
+// ── 狀態 ─────────────────────────────────────────────────
+let employees = [];
+let currentEmp = null;
+let rowId = 0;
+
+// ── 初始化 ───────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  setDefaultDate();
+  loadEmployees();
+  document.getElementById('emp-select').addEventListener('change', onEmpChange);
+  document.getElementById('btn-save').addEventListener('click', onSave);
+});
+
+function setDefaultDate() {
+  document.getElementById('prod-date').value = new Date().toLocaleDateString('en-CA');
+}
+
+// ── 員工 ─────────────────────────────────────────────────
+function loadEmployees() {
+  post({ action: 'getEmployees' })
+    .then(data => {
+      employees = Array.isArray(data) ? data : [];
+      const sel = document.getElementById('emp-select');
+      employees.forEach(e => {
+        const opt = document.createElement('option');
+        opt.value = e.id;
+        opt.textContent = `${e.name} (${e.id})`;
+        sel.appendChild(opt);
+      });
+    })
+    .catch(() => showMsg('員工清單載入失敗', 'error'));
+}
+
+function onEmpChange(ev) {
+  const id = ev.target.value;
+  currentEmp = employees.find(e => e.id === id) || null;
+  document.getElementById('header-hint').textContent =
+    currentEmp ? `${currentEmp.name} 的班產記錄` : '請先選擇日期與員工';
+  clearRows();
+  if (currentEmp) addRow();
+  updateFooter();
+}
+
+// ── 行管理 ────────────────────────────────────────────────
+function addRow() {
+  const id = ++rowId;
+  const div = document.createElement('div');
+  div.className = 'row';
+  div.dataset.id = id;
+  div.innerHTML = `
+    <div class="spec-wrap">
+      <input class="spec-input" type="text" placeholder="輸入規格…" autocomplete="off" data-field="spec">
+      <div class="ac-list" id="ac-${id}"></div>
+    </div>
+    <select data-field="length">
+      <option value="">— 碼長 —</option>
+      ${LENGTHS.map(l => `<option value="${l}">${l}</option>`).join('')}
+    </select>
+    <input type="number" min="0" step="1" placeholder="捲數" data-field="rolls">
+    <div class="cell-coeff" data-field="coeff">—</div>
+    <div class="cell-eff"   data-field="eff">—</div>
+    <button class="btn-del" type="button" onclick="deleteRow(${id})" title="刪除">✕</button>
+  `;
+  document.getElementById('rows').appendChild(div);
+  bindRowEvents(div, id);
+  div.querySelector('[data-field="spec"]').focus();
+}
+
+function deleteRow(id) {
+  const el = document.querySelector(`.row[data-id="${id}"]`);
+  if (el) el.remove();
+  updateFooter();
+}
+
+function clearRows() {
+  document.getElementById('rows').innerHTML = '';
+  rowId = 0;
+}
+
+function getRows() {
+  return Array.from(document.querySelectorAll('.row')).map(row => ({
+    spec:       row.querySelector('[data-field="spec"]').value.trim(),
+    length:     row.querySelector('[data-field="length"]').value,
+    rolls:      parseFloat(row.querySelector('[data-field="rolls"]').value) || 0,
+    coeff:      parseFloat(row.querySelector('[data-field="coeff"]').textContent) || 0,
+    efficiency: parseFloat(row.querySelector('[data-field="eff"]').textContent) || 0,
+  }));
+}
+
+function updateFooter() {
+  const valid = getRows().filter(r => r.efficiency > 0);
+  const total = valid.reduce((s, r) => s + r.efficiency, 0);
+  document.getElementById('row-count').textContent = valid.length;
+  document.getElementById('total-eff').textContent = total.toFixed(2);
+  const canSave = !!currentEmp && valid.length > 0 && !!document.getElementById('prod-date').value;
+  document.getElementById('btn-save').disabled = !canSave;
+}
+
+// ── 行事件（autocomplete + 計算 + Tab 跳行）────────────────
+function bindRowEvents(div, id) {
+  const specInput  = div.querySelector('[data-field="spec"]');
+  const lenSel     = div.querySelector('[data-field="length"]');
+  const rollsInput = div.querySelector('[data-field="rolls"]');
+  const acList     = document.getElementById(`ac-${id}`);
+  let acIndex = -1;
+
+  // ── autocomplete ──
+  specInput.addEventListener('input', () => {
+    const q = specInput.value.trim().toLowerCase();
+    acIndex = -1;
+    if (!q) { acList.style.display = 'none'; return; }
+    const matches = SPEC_KEYS.filter(k => k.toLowerCase().includes(q));
+    if (!matches.length) { acList.style.display = 'none'; return; }
+    acList.innerHTML = matches.slice(0, 20).map((k, i) => {
+      const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      const hi = k.replace(re, '<mark>$1</mark>');
+      return `<div class="ac-item" data-val="${k}" data-idx="${i}">${hi}</div>`;
+    }).join('');
+    acList.style.display = 'block';
+    acList.querySelectorAll('.ac-item').forEach(item => {
+      item.addEventListener('mousedown', e => {
+        e.preventDefault();
+        confirmSpec(item.dataset.val);
+      });
+    });
+  });
+
+  specInput.addEventListener('keydown', e => {
+    const items = acList.querySelectorAll('.ac-item');
+    if (!items.length || acList.style.display === 'none') return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      acIndex = Math.min(acIndex + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle('ac-active', i === acIndex));
+      if (items[acIndex]) items[acIndex].scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      acIndex = Math.max(acIndex - 1, 0);
+      items.forEach((el, i) => el.classList.toggle('ac-active', i === acIndex));
+      if (items[acIndex]) items[acIndex].scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter' || (e.key === 'Tab' && acIndex >= 0)) {
+      if (acIndex >= 0 && items[acIndex]) {
+        e.preventDefault();
+        confirmSpec(items[acIndex].dataset.val);
+      } else {
+        acList.style.display = 'none';
+      }
+    } else if (e.key === 'Escape') {
+      acList.style.display = 'none';
+    }
+  });
+
+  specInput.addEventListener('blur', () => {
+    setTimeout(() => { acList.style.display = 'none'; }, 150);
+  });
+
+  function confirmSpec(val) {
+    specInput.value = val;
+    acList.style.display = 'none';
+    lenSel.focus();
+    recalc();
+  }
+
+  // ── 計算 ──
+  function recalc() {
+    const spec  = specInput.value.trim();
+    const len   = lenSel.value;
+    const rolls = parseFloat(rollsInput.value) || 0;
+    const coeff = (spec && len) ? lookupCoeff(spec, len) : null;
+    div.querySelector('[data-field="coeff"]').textContent = coeff !== null ? coeff : '—';
+    const eff = (coeff !== null && rolls > 0) ? +(coeff * rolls).toFixed(2) : '—';
+    div.querySelector('[data-field="eff"]').textContent = eff;
+    updateFooter();
+  }
+
+  lenSel.addEventListener('change', () => { recalc(); if (lenSel.value) rollsInput.focus(); });
+  rollsInput.addEventListener('input', recalc);
+
+  // ── Tab 從捲數跳下一行 ──
+  rollsInput.addEventListener('keydown', e => {
+    if (e.key === 'Tab' && !e.shiftKey) {
+      e.preventDefault();
+      const allRows = document.querySelectorAll('.row');
+      const isLast = div === allRows[allRows.length - 1];
+      if (isLast) {
+        addRow();
+      } else {
+        div.nextElementSibling.querySelector('[data-field="spec"]').focus();
+      }
+    }
+  });
+}
+
+// ── 儲存 ─────────────────────────────────────────────────
+function onSave() {
+  const date = document.getElementById('prod-date').value;
+  if (!date || !currentEmp) return;
+  const validRows = getRows().filter(r => r.spec && r.length && r.rolls > 0 && r.coeff > 0);
+  if (!validRows.length) { showMsg('沒有有效的產量記錄', 'error'); return; }
+
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  btn.textContent = '儲存中…';
+
+  const records = validRows.map(r => ({
+    empId:      currentEmp.id,
+    empName:    currentEmp.name,
+    spec:       r.spec,
+    length:     r.length,
+    rolls:      r.rolls,
+    coeff:      r.coeff,
+    efficiency: r.efficiency,
+  }));
+
+  post({ action: 'saveRecords', records, date })
+    .then(res => {
+      showMsg(`已儲存 ${res.saved} 筆`, 'success');
+      clearRows();
+      document.getElementById('emp-select').value = '';
+      currentEmp = null;
+      document.getElementById('header-hint').textContent = '請先選擇日期與員工';
+      updateFooter();
+      btn.textContent = '儲存紀錄';
+    })
+    .catch(() => {
+      showMsg('儲存失敗，請重試', 'error');
+      btn.disabled = false;
+      btn.textContent = '儲存紀錄';
+    });
+}
+
+// ── 工具 ─────────────────────────────────────────────────
+function post(payload) {
+  return fetch(window.location.href, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }).then(r => r.json());
+}
+
+function showMsg(text, type) {
+  const el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = `show-${type}`;
+  setTimeout(() => { el.className = ''; }, 3000);
+}
+</script>
+</body>
+</html>
