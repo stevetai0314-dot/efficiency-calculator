@@ -19,6 +19,12 @@ function respond(data) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+// GAS 不支援 OPTIONS，但部署為「所有人」時 simple POST（text/plain body）不需 preflight
+// 若瀏覽器仍報 CORS，將 doGet 改為同時處理 GET callback（JSONP 備用方案）
+function doOptions() {
+  return ContentService.createTextOutput('').setMimeType(ContentService.MimeType.JSON);
+}
+
 function getEmployees_() {
   const ss = SpreadsheetApp.openById(SS_ID);
   const sheet = ss.getSheets()[1]; // Sheet 2

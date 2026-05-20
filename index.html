@@ -253,6 +253,9 @@ function lookupCoeff(spec, length) {
   return row[idx];
 }
 
+// ── GAS 後端網址（部署後填入）────────────────────────────
+const GAS_URL = 'YOUR_GAS_DEPLOYMENT_URL_HERE';
+
 // ── 狀態 ─────────────────────────────────────────────────
 let employees = [];
 let currentEmp = null;
@@ -486,7 +489,7 @@ function onSave() {
 
 // ── 工具 ─────────────────────────────────────────────────
 function post(payload) {
-  return fetch(window.location.href, {
+  return fetch(GAS_URL, {
     method: 'POST',
     body: JSON.stringify(payload),
   }).then(r => r.json());
