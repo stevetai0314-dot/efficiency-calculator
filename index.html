@@ -11,9 +11,12 @@ body { font-family: system-ui, -apple-system, sans-serif; background: #111827; c
 /* 頂部 */
 #header { background: #1f2937; border-bottom: 1px solid #374151; padding: 12px 20px; display: flex; gap: 16px; align-items: flex-end; flex-shrink: 0; flex-wrap: wrap; }
 #header label { font-size: 11px; color: #9ca3af; display: block; margin-bottom: 4px; letter-spacing: 0.05em; }
-#header input[type="date"], #header select { background: #111827; border: 1px solid #374151; border-radius: 6px; color: #e5e7eb; padding: 7px 10px; font-size: 14px; }
-#header input[type="date"]:focus, #header select:focus { outline: none; border-color: #3b82f6; }
-#emp-select { min-width: 200px; }
+#header input[type="date"] { background: #111827; border: 1px solid #374151; border-radius: 6px; color: #e5e7eb; padding: 7px 10px; font-size: 14px; }
+#header input[type="date"]:focus { outline: none; border-color: #3b82f6; }
+#emp-wrap { position: relative; min-width: 220px; }
+#emp-input { width: 100%; background: #111827; border: 1px solid #374151; border-radius: 6px; color: #e5e7eb; padding: 7px 10px; font-size: 14px; }
+#emp-input:focus { outline: none; border-color: #3b82f6; }
+#emp-ac { position: absolute; top: 100%; left: 0; right: 0; background: #1f2937; border: 1px solid #374151; border-top: none; border-radius: 0 0 6px 6px; z-index: 200; max-height: 220px; overflow-y: auto; display: none; box-shadow: 0 8px 16px rgba(0,0,0,0.4); }
 #header-hint { font-size: 12px; color: #6b7280; align-self: center; margin-left: auto; }
 
 /* 主內容 */
@@ -67,11 +70,10 @@ body { font-family: system-ui, -apple-system, sans-serif; background: #111827; c
     <label for="prod-date">生產日期</label>
     <input type="date" id="prod-date">
   </div>
-  <div>
-    <label for="emp-select">員工</label>
-    <select id="emp-select">
-      <option value="">— 選擇員工 —</option>
-    </select>
+  <div id="emp-wrap">
+    <label for="emp-input">員工（工號或姓名）</label>
+    <input type="text" id="emp-input" placeholder="輸入工號或姓名…" autocomplete="off">
+    <div id="emp-ac"></div>
   </div>
   <div id="header-hint">請先選擇日期與員工</div>
 </div>
@@ -265,7 +267,7 @@ let rowId = 0;
 document.addEventListener('DOMContentLoaded', () => {
   setDefaultDate();
   loadEmployees();
-  document.getElementById('emp-select').addEventListener('change', onEmpChange);
+  bindEmpAutocomplete();
   document.getElementById('btn-save').addEventListener('click', onSave);
 });
 
@@ -273,29 +275,80 @@ function setDefaultDate() {
   document.getElementById('prod-date').value = new Date().toLocaleDateString('en-CA');
 }
 
-// ── 員工（JSONP GET）─────────────────────────────────────
+// ── 員工（JSONP GET + autocomplete）─────────────────────
 function loadEmployees() {
   jsonpGet(GAS_URL, 'getEmployees')
-    .then(data => {
-      employees = Array.isArray(data) ? data : [];
-      const sel = document.getElementById('emp-select');
-      employees.forEach(e => {
-        const opt = document.createElement('option');
-        opt.value = e.id;
-        opt.textContent = `${e.name} (${e.id})`;
-        sel.appendChild(opt);
-      });
-    })
+    .then(data => { employees = Array.isArray(data) ? data : []; })
     .catch(() => showMsg('員工清單載入失敗', 'error'));
 }
 
-function onEmpChange(ev) {
-  const id = ev.target.value;
-  currentEmp = employees.find(e => e.id === id) || null;
-  document.getElementById('header-hint').textContent =
-    currentEmp ? `${currentEmp.name} 的班產記錄` : '請先選擇日期與員工';
+function bindEmpAutocomplete() {
+  const input = document.getElementById('emp-input');
+  const ac    = document.getElementById('emp-ac');
+  let acIndex = -1;
+
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    acIndex = -1;
+    if (!q) { ac.style.display = 'none'; return; }
+    const matches = employees.filter(e =>
+      e.id.toLowerCase().includes(q) || e.name.toLowerCase().includes(q)
+    );
+    if (!matches.length) { ac.style.display = 'none'; return; }
+    const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    ac.innerHTML = matches.slice(0, 20).map((e, i) => {
+      const idHi   = e.id.replace(re, '<mark>$1</mark>');
+      const nameHi = e.name.replace(re, '<mark>$1</mark>');
+      return `<div class="ac-item" data-id="${e.id}" data-idx="${i}">${idHi} ${nameHi}</div>`;
+    }).join('');
+    ac.style.display = 'block';
+    ac.querySelectorAll('.ac-item').forEach(item => {
+      item.addEventListener('mousedown', ev => {
+        ev.preventDefault();
+        selectEmp(item.dataset.id);
+      });
+    });
+  });
+
+  input.addEventListener('keydown', e => {
+    const items = ac.querySelectorAll('.ac-item');
+    if (!items.length || ac.style.display === 'none') return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      acIndex = Math.min(acIndex + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle('ac-active', i === acIndex));
+      if (items[acIndex]) items[acIndex].scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      acIndex = Math.max(acIndex - 1, 0);
+      items.forEach((el, i) => el.classList.toggle('ac-active', i === acIndex));
+      if (items[acIndex]) items[acIndex].scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      if (acIndex >= 0 && items[acIndex]) {
+        e.preventDefault();
+        selectEmp(items[acIndex].dataset.id);
+      } else {
+        ac.style.display = 'none';
+      }
+    } else if (e.key === 'Escape') {
+      ac.style.display = 'none';
+    }
+  });
+
+  input.addEventListener('blur', () => {
+    setTimeout(() => { ac.style.display = 'none'; }, 150);
+  });
+}
+
+function selectEmp(id) {
+  const emp = employees.find(e => e.id === id);
+  if (!emp) return;
+  currentEmp = emp;
+  document.getElementById('emp-input').value = `${emp.name} (${emp.id})`;
+  document.getElementById('emp-ac').style.display = 'none';
+  document.getElementById('header-hint').textContent = `${emp.name} 的班產記錄`;
   clearRows();
-  if (currentEmp) addRow();
+  addRow();
   updateFooter();
 }
 
@@ -479,7 +532,7 @@ function onSave() {
 
   showMsg(`已送出 ${validRows.length} 筆（約 3 秒後寫入 Sheets）`, 'success');
   clearRows();
-  document.getElementById('emp-select').value = '';
+  document.getElementById('emp-input').value = '';
   currentEmp = null;
   document.getElementById('header-hint').textContent = '請先選擇日期與員工';
   updateFooter();
