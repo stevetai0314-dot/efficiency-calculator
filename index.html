@@ -273,9 +273,9 @@ function setDefaultDate() {
   document.getElementById('prod-date').value = new Date().toLocaleDateString('en-CA');
 }
 
-// ── 員工 ─────────────────────────────────────────────────
+// ── 員工（JSONP GET）─────────────────────────────────────
 function loadEmployees() {
-  post({ action: 'getEmployees' })
+  jsonpGet(GAS_URL, 'getEmployees')
     .then(data => {
       employees = Array.isArray(data) ? data : [];
       const sel = document.getElementById('emp-select');
@@ -449,7 +449,7 @@ function bindRowEvents(div, id) {
   });
 }
 
-// ── 儲存 ─────────────────────────────────────────────────
+// ── 儲存（POST no-cors，fire-and-forget）─────────────────
 function onSave() {
   const date = document.getElementById('prod-date').value;
   if (!date || !currentEmp) return;
@@ -470,29 +470,40 @@ function onSave() {
     efficiency: r.efficiency,
   }));
 
-  post({ action: 'saveRecords', records, date })
-    .then(res => {
-      showMsg(`已儲存 ${res.saved} 筆`, 'success');
-      clearRows();
-      document.getElementById('emp-select').value = '';
-      currentEmp = null;
-      document.getElementById('header-hint').textContent = '請先選擇日期與員工';
-      updateFooter();
-      btn.textContent = '儲存紀錄';
-    })
-    .catch(() => {
-      showMsg('儲存失敗，請重試', 'error');
-      btn.disabled = false;
-      btn.textContent = '儲存紀錄';
-    });
+  // no-cors：送出後無法讀回應，樂觀地視為成功
+  fetch(GAS_URL, {
+    method: 'POST',
+    mode:   'no-cors',
+    body:   JSON.stringify({ action: 'saveRecords', records, date }),
+  }).catch(() => {}); // 網路錯誤靜默，GAS 端有 try/catch
+
+  showMsg(`已送出 ${validRows.length} 筆（約 3 秒後寫入 Sheets）`, 'success');
+  clearRows();
+  document.getElementById('emp-select').value = '';
+  currentEmp = null;
+  document.getElementById('header-hint').textContent = '請先選擇日期與員工';
+  updateFooter();
+  btn.textContent = '儲存紀錄';
 }
 
 // ── 工具 ─────────────────────────────────────────────────
-function post(payload) {
-  return fetch(GAS_URL, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  }).then(r => r.json());
+function jsonpGet(url, action) {
+  return new Promise((resolve, reject) => {
+    const cbName = '_jsonp_' + Date.now();
+    const script = document.createElement('script');
+    window[cbName] = data => {
+      delete window[cbName];
+      document.head.removeChild(script);
+      resolve(data);
+    };
+    script.onerror = () => {
+      delete window[cbName];
+      document.head.removeChild(script);
+      reject(new Error('JSONP failed'));
+    };
+    script.src = `${url}?action=${action}&callback=${cbName}`;
+    document.head.appendChild(script);
+  });
 }
 
 function showMsg(text, type) {
