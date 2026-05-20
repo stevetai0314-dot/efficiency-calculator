@@ -39,7 +39,7 @@ function doPost(e) {
 
 function getEmployees_() {
   const ss    = SpreadsheetApp.openById(SS_ID);
-  const sheet = ss.getSheets()[1]; // Sheet 2
+  const sheet = ss.getSheetByName('參數');
   const data  = sheet.getDataRange().getValues();
   const out   = [];
   for (let i = 0; i < data.length; i++) {
