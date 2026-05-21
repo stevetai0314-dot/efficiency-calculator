@@ -136,6 +136,7 @@ function getSpecs_(system) {
 function saveRecords_(records, date, system) {
   const sheetName = system === 'welding' ? '焊接記錄'
                   : system === 'backing' ? '褙膠記錄'
+                  : system === 'cutting' ? '切勾記錄'
                   : '分條記錄';
   const sheet = getOrCreateSheet_(sheetName, system);
   const now   = Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyyy/MM/dd HH:mm:ss');
@@ -154,6 +155,12 @@ function saveRecords_(records, date, system) {
       r.workHours, r.abnormalHours,
       r.category, r.spec, r.coeff, r.rolls, r.efficiency,
       r.abnormalReason || '', r.newbieDeduct || ''
+    ]);
+  } else if (system === 'cutting') {
+    rows = records.map(r => [
+      date, now,
+      r.workHours, r.abnormalHours, r.abnormalReason || '',
+      r.deptCount, r.cutCount
     ]);
   } else {
     rows = records.map(r => [
@@ -184,6 +191,8 @@ function getOrCreateSheet_(name, system) {
       headers = ['生產日期','儲存時間','工號','員工姓名','上班時數','異常時數',
                  '碼長','規格分類','係數','卷數','效率換算',
                  '異常原因','新人扣時%'];
+    } else if (system === 'cutting') {
+      headers = ['生產日期','儲存時間','上班時數','異常時數','異常原因','部門人數','切勾數量'];
     } else {
       headers = ['生產日期','儲存時間','工號','員工姓名','上班時數','異常時數',
                  '生產異常帶時數','規格','碼長','捲數','係數','效率換算',
