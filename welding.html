@@ -37,9 +37,9 @@
       text-align: center; color: #0d6efd; font-size: 13px;
     }
     .cell-pts {
-      background: #fff3cd; border: 1px solid #ffc107;
-      border-radius: .375rem; padding: 5px 8px;
-      text-align: center; color: #664d03; font-size: 13px;
+      background: #fff3cd !important; border: 1px solid #ffc107 !important;
+      border-radius: .375rem;
+      text-align: center !important; color: #664d03 !important; font-size: 13px;
     }
     .cell-eff {
       background: #cfe2ff; border: 1px solid #9ec5fe;
@@ -254,7 +254,7 @@ function addRow() {
       <option value="">— 規格分類 —</option>
     </select>
     <div class="cell-coeff" data-field="coeff">—</div>
-    <div class="cell-pts"   data-field="pts">—</div>
+    <input type="number" class="form-control form-control-sm cell-pts" data-field="pts" min="0" step="1" placeholder="—" style="text-align:center">
     <div class="cell-eff"   data-field="eff">—</div>
     <button class="btn btn-sm btn-outline-danger py-0 px-2" type="button" onclick="deleteRow(${id})" title="刪除">✕</button>
   `;
@@ -279,7 +279,7 @@ function getRows() {
     item:       row.querySelector('[data-field="item"]').value,
     spec:       row.querySelector('[data-field="spec"]').value,
     coeff:      parseFloat(row.querySelector('[data-field="coeff"]').textContent) || 0,
-    points:     parseFloat(row.querySelector('[data-field="pts"]').textContent)   || 0,
+    points:     parseFloat(row.querySelector('[data-field="pts"]').value)         || 0,
     efficiency: parseFloat(row.querySelector('[data-field="eff"]').textContent)   || 0,
   }));
 }
@@ -295,8 +295,9 @@ function updateFooter() {
 
 // ── 行事件 ────────────────────────────────────────────────────
 function bindRowEvents(div, id) {
-  const itemSel = div.querySelector('[data-field="item"]');
-  const specSel = div.querySelector('[data-field="spec"]');
+  const itemSel  = div.querySelector('[data-field="item"]');
+  const specSel  = div.querySelector('[data-field="spec"]');
+  const ptsInput = div.querySelector('[data-field="pts"]');
 
   itemSel.addEventListener('change', () => {
     const item = itemSel.value;
@@ -315,7 +316,13 @@ function bindRowEvents(div, id) {
 
   specSel.addEventListener('change', () => {
     recalc();
-    if (specSel.value) {
+    if (specSel.value) ptsInput.focus();
+  });
+
+  ptsInput.addEventListener('input', recalc);
+  ptsInput.addEventListener('keydown', e => {
+    if ((e.key === 'Enter' || e.key === 'Tab') && ptsInput.value) {
+      e.preventDefault();
       const allRows = document.querySelectorAll('.row-entry');
       if (div === allRows[allRows.length - 1]) addRow();
       else div.nextElementSibling.querySelector('[data-field="item"]').focus();
@@ -326,10 +333,11 @@ function bindRowEvents(div, id) {
     const item  = itemSel.value;
     const spec  = specSel.value;
     const entry = (item && spec && ITEMS[item]) ? ITEMS[item][spec] : null;
-    div.querySelector('[data-field="coeff"]').textContent = entry ? fmtCoeff(entry.coefficient) : '—';
-    div.querySelector('[data-field="pts"]').textContent   = entry ? entry.points : '—';
-    const eff = entry ? +(entry.coefficient * entry.points).toFixed(2) : '—';
-    div.querySelector('[data-field="eff"]').textContent   = eff;
+    const coeff = entry ? entry.coefficient : null;
+    div.querySelector('[data-field="coeff"]').textContent = coeff != null ? fmtCoeff(coeff) : '—';
+    const pts = parseFloat(ptsInput.value) || 0;
+    const eff = (coeff != null && pts > 0) ? +(coeff * pts).toFixed(2) : '—';
+    div.querySelector('[data-field="eff"]').textContent = eff;
     updateFooter();
   }
 }
