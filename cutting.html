@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>切勾填報</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.8/dist/flatly/bootstrap.min.css">
+  <style>
+    .toast-msg {
+      position: fixed; top: 16px; right: 16px;
+      padding: 10px 18px; border-radius: 8px; font-size: 14px;
+      z-index: 9999; opacity: 0; transition: opacity .2s; pointer-events: none;
+    }
+    .toast-msg.show-success { background: #d1e7dd; color: #0f5132; opacity: 1; border: 1px solid #badbcc; }
+    .toast-msg.show-error   { background: #f8d7da; color: #842029; opacity: 1; border: 1px solid #f5c2c7; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg sticky-top shadow-sm bg-white">
+  <div class="container-fluid">
+    <span class="navbar-brand fw-bold">切勾填報</span>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navLinks">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navLinks">
+      <div class="navbar-nav ms-auto gap-1">
+        <a class="nav-link" href="index.html">分條填報</a>
+        <a class="nav-link" href="welding.html">焊接填報</a>
+        <a class="nav-link" href="backing.html">褙膠填報</a>
+        <a class="nav-link" href="report.html">報表總表</a>
+        <a class="nav-link text-success fw-semibold" href="https://docs.google.com/spreadsheets/d/1mxgL9IR2uggzlIVRss0RDtb-3OX2ReUV0KpEFyrmm9k/edit" target="_blank">📊 Sheet</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="container-fluid px-3 py-3">
+  <div class="card shadow-sm" style="max-width:520px">
+    <div class="card-body py-3">
+      <div class="row g-3">
+
+        <div class="col-auto">
+          <label class="form-label small mb-1">生產日期</label>
+          <input type="date" id="prod-date" class="form-control form-control-sm" style="width:150px">
+        </div>
+
+        <div class="w-100"></div>
+
+        <div class="col-auto">
+          <label class="form-label small mb-1">上班時數</label>
+          <input type="number" id="work-hours" class="form-control form-control-sm text-end" min="0" step="0.5" placeholder="8" style="width:90px">
+        </div>
+        <div class="col-auto">
+          <label class="form-label small mb-1">異常時數</label>
+          <input type="number" id="abnormal-hours" class="form-control form-control-sm text-end" min="0" step="0.5" placeholder="0" style="width:90px">
+        </div>
+        <div class="col">
+          <label class="form-label small mb-1">異常原因</label>
+          <input type="text" id="abnormal-reason" class="form-control form-control-sm" placeholder="說明…">
+        </div>
+
+        <div class="w-100"></div>
+
+        <div class="col-auto">
+          <label class="form-label small mb-1">部門人數</label>
+          <input type="number" id="dept-count" class="form-control form-control-sm text-end" min="0" step="1" placeholder="0" style="width:90px">
+        </div>
+        <div class="col-auto">
+          <label class="form-label small mb-1">切勾數量</label>
+          <input type="number" id="cut-count" class="form-control form-control-sm text-end" min="0" step="1" placeholder="0" style="width:90px">
+        </div>
+
+        <div class="w-100"></div>
+
+        <div class="col-12 d-flex justify-content-end">
+          <button id="btn-save" class="btn btn-primary">儲存紀錄</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="msg" class="toast-msg"></div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyKEIcvpKEeTG2iOdyEkIP93ofx1oCl4qLvs3WPvYw930uV8UY--xzYYR8Bgi1cRcol/exec';
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('prod-date').value = new Date().toLocaleDateString('en-CA');
+  document.getElementById('btn-save').addEventListener('click', onSave);
+});
+
+function onSave() {
+  const date         = document.getElementById('prod-date').value;
+  const workHours    = parseFloat(document.getElementById('work-hours').value)    || 0;
+  const abnormalHours= parseFloat(document.getElementById('abnormal-hours').value)|| 0;
+  const abnormalReason = document.getElementById('abnormal-reason').value.trim();
+  const deptCount    = parseInt(document.getElementById('dept-count').value)      || 0;
+  const cutCount     = parseInt(document.getElementById('cut-count').value)       || 0;
+
+  if (!date) { showMsg('請填寫生產日期', 'error'); return; }
+  if (cutCount <= 0) { showMsg('請填寫切勾數量', 'error'); return; }
+
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true; btn.textContent = '儲存中…';
+
+  fetch(GAS_URL, {
+    method: 'POST', mode: 'no-cors',
+    body: JSON.stringify({
+      action: 'saveRecords',
+      system: 'cutting',
+      date,
+      records: [{ workHours, abnormalHours, abnormalReason, deptCount, cutCount }]
+    }),
+  }).catch(() => {});
+
+  showMsg('已送出（約 3 秒後寫入 Sheets）', 'success');
+  document.getElementById('work-hours').value = '';
+  document.getElementById('abnormal-hours').value = '';
+  document.getElementById('abnormal-reason').value = '';
+  document.getElementById('dept-count').value = '';
+  document.getElementById('cut-count').value = '';
+  btn.disabled = false; btn.textContent = '儲存紀錄';
+}
+
+function showMsg(text, type) {
+  const el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = 'toast-msg show-' + type;
+  setTimeout(() => { el.className = 'toast-msg'; }, 3000);
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
