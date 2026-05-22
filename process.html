@@ -340,13 +340,23 @@ function addRow() {
   updateFooter();
 }
 
+function normalizeTime(raw) {
+  const d = raw.replace(/\D/g, '').slice(0, 4);
+  if (!d) return '';
+  return d.length <= 2 ? d : d.slice(0, 2) + ':' + d.slice(2);
+}
+
 function bindTimeInput(el) {
   el.setAttribute('inputmode', 'numeric');
+  el.addEventListener('focus', function() {
+    if (this.value) this.select();
+  });
   el.addEventListener('keydown', function(e) {
     if (e.key === 'Backspace') {
       e.preventDefault();
-      const d = this.value.replace(/\D/g, '').slice(0, -1);
-      this.value = d.length <= 2 ? d : d.slice(0, 2) + ':' + d.slice(2);
+      const selAll = this.selectionStart === 0 && this.selectionEnd === this.value.length;
+      const d = selAll ? '' : this.value.replace(/\D/g, '').slice(0, -1);
+      this.value = normalizeTime(d);
       this.dispatchEvent(new Event('input', { bubbles: true }));
       return;
     }
@@ -358,8 +368,9 @@ function bindTimeInput(el) {
     }
     if (!e.ctrlKey && !e.metaKey && !e.altKey && /^\d$/.test(e.key)) {
       e.preventDefault();
-      const d = (this.value.replace(/\D/g, '') + e.key).slice(0, 4);
-      this.value = d.length <= 2 ? d : d.slice(0, 2) + ':' + d.slice(2);
+      const selAll = this.selectionStart === 0 && this.selectionEnd === this.value.length;
+      const base = selAll ? '' : this.value.replace(/\D/g, '');
+      this.value = normalizeTime((base + e.key).slice(0, 4));
       this.dispatchEvent(new Event('input', { bubbles: true }));
     }
   });
