@@ -128,6 +128,26 @@ function getSpecs_(system) {
     return { items };
   }
 
+  // 裁切：從「裁切參數」分頁讀取
+  // 表頭：A=工序, B=規格, C=碼長, D=顏色
+  if (system === 'process') {
+    const sheet = ss.getSheetByName('裁切參數');
+    if (!sheet) return { processes: [], specs: [], lengths: [], colors: [] };
+    const data = sheet.getDataRange().getValues();
+    const processes = [], specs = [], lengths = [], colors = [];
+    for (let i = 1; i < data.length; i++) {
+      const p = String(data[i][0] || '').trim();
+      const s = String(data[i][1] || '').trim();
+      const l = String(data[i][2] || '').trim();
+      const c = String(data[i][3] || '').trim();
+      if (p && !processes.includes(p)) processes.push(p);
+      if (s && !specs.includes(s))     specs.push(s);
+      if (l && !lengths.includes(l))   lengths.push(l);
+      if (c && !colors.includes(c))    colors.push(c);
+    }
+    return { processes, specs, lengths, colors };
+  }
+
   return {};
 }
 
@@ -137,6 +157,7 @@ function saveRecords_(records, date, system) {
   const sheetName = system === 'welding' ? '焊接記錄'
                   : system === 'backing' ? '褙膠記錄'
                   : system === 'cutting' ? '切勾記錄'
+                  : system === 'process' ? '裁切記錄'
                   : '分條記錄';
   const sheet = getOrCreateSheet_(sheetName, system);
   const now   = Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyyy/MM/dd HH:mm:ss');
@@ -161,6 +182,15 @@ function saveRecords_(records, date, system) {
       date, now,
       r.workHours, r.abnormalHours, r.abnormalReason || '',
       r.deptCount, r.cutCount
+    ]);
+  } else if (system === 'process') {
+    rows = records.map(r => [
+      date, now, r.empId, r.empName,
+      r.process, r.startTime, r.endTime,
+      r.orderNo, r.customer,
+      r.spec, r.color, r.length,
+      r.rolls, r.sheetLen, r.sheetCnt, r.strips, r.cuts,
+      r.abnormalHoursTotal, r.abnormalReason || ''
     ]);
   } else {
     rows = records.map(r => [
@@ -193,6 +223,11 @@ function getOrCreateSheet_(name, system) {
                  '異常原因','新人扣時%'];
     } else if (system === 'cutting') {
       headers = ['生產日期','儲存時間','上班時數','異常時數','異常原因','部門人數','切勾數量'];
+    } else if (system === 'process') {
+      headers = ['生產日期','儲存時間','工號','員工姓名',
+                 '工序','開始時間','結束時間','訂單號','客戶名稱',
+                 '規格','顏色','碼長','捲數','片長','片數','條數','刀數',
+                 '異常時數合計','異常原因'];
     } else {
       headers = ['生產日期','儲存時間','工號','員工姓名','上班時數','異常時數',
                  '生產異常帶時數','規格','碼長','捲數','係數','效率換算',
