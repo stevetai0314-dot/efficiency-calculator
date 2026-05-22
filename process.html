@@ -225,8 +225,7 @@ function selectEmp(id) {
   document.getElementById('emp-input').value = `${emp.name} (${emp.id})`;
   document.getElementById('emp-ac').style.display = 'none';
   document.getElementById('header-hint').textContent = `${emp.name} 的班產記錄`;
-  clearRows();
-  if (specsReady) addRow();
+  if (specsReady && !document.querySelector('.entry-block')) addRow();
   updateFooter();
 }
 
@@ -342,12 +341,26 @@ function addRow() {
 }
 
 function bindTimeInput(el) {
-  el.addEventListener('input', function() {
-    const digits = this.value.replace(/\D/g, '').slice(0, 4);
-    if (digits.length <= 2) {
-      this.value = digits;
-    } else {
-      this.value = digits.slice(0, 2) + ':' + digits.slice(2);
+  el.setAttribute('inputmode', 'numeric');
+  el.addEventListener('keydown', function(e) {
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      const d = this.value.replace(/\D/g, '').slice(0, -1);
+      this.value = d.length <= 2 ? d : d.slice(0, 2) + ':' + d.slice(2);
+      this.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
+    if (e.key === 'Delete') {
+      e.preventDefault();
+      this.value = '';
+      this.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && /^\d$/.test(e.key)) {
+      e.preventDefault();
+      const d = (this.value.replace(/\D/g, '') + e.key).slice(0, 4);
+      this.value = d.length <= 2 ? d : d.slice(0, 2) + ':' + d.slice(2);
+      this.dispatchEvent(new Event('input', { bubbles: true }));
     }
   });
 }
