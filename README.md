@@ -1,6 +1,6 @@
 # 效率換算工具
 
-工廠員工班產效率換算紀錄系統，支援四個工作站。前端部署在 GitHub Pages，後端是 Google Apps Script，資料存在 Google Sheets。
+工廠員工班產效率換算紀錄系統，支援五個工作站。前端部署在 GitHub Pages，後端是 Google Apps Script，資料存在 Google Sheets。
 
 ---
 
@@ -12,6 +12,7 @@
 | 焊接填報 | https://stevetai0314-dot.github.io/efficiency-calculator/welding.html |
 | 褙膠填報 | https://stevetai0314-dot.github.io/efficiency-calculator/backing.html |
 | 切勾填報 | https://stevetai0314-dot.github.io/efficiency-calculator/cutting.html |
+| 裁切填報 | https://stevetai0314-dot.github.io/efficiency-calculator/process.html |
 | 報表總表 | https://stevetai0314-dot.github.io/efficiency-calculator/report.html |
 
 ---
@@ -43,10 +44,12 @@ https://script.google.com/macros/s/AKfycbyKEIcvpKEeTG2iOdyEkIP93ofx1oCl4qLvs3WPv
 | `參數` | 員工清單 + 分條係數表 | C欄=工號, D欄=姓名；F欄起=規格係數表 |
 | `焊接係數` | 焊接係數設定 | A=項目, B=規格分類, C=係數, D=點數（點數欄已不使用，前端手動輸入） |
 | `褙膠係數` | 褙膠係數設定 | A=碼長, B=規格分類, C=係數 |
+| `裁切參數` | 裁切選單設定（手動維護） | A=工序, B=規格, C=碼長, D=顏色（各欄獨立，長度不需一樣） |
 | `分條記錄` | 分條班產紀錄（自動建立） | 見下方欄位說明 |
 | `焊接記錄` | 焊接班產紀錄（自動建立） | 見下方欄位說明 |
 | `褙膠記錄` | 褙膠班產紀錄（自動建立） | 見下方欄位說明 |
 | `切勾記錄` | 切勾班產紀錄（自動建立） | 見下方欄位說明 |
+| `裁切記錄` | 裁切班產紀錄（自動建立） | 見下方欄位說明 |
 
 ### 分條記錄欄位
 
@@ -68,6 +71,11 @@ https://script.google.com/macros/s/AKfycbyKEIcvpKEeTG2iOdyEkIP93ofx1oCl4qLvs3WPv
 | 生產日期 | 儲存時間 | 上班時數 | 異常時數 | 異常原因 | 部門人數 | 切勾數量 |
 |---|---|---|---|---|---|---|
 
+### 裁切記錄欄位
+
+| 生產日期 | 儲存時間 | 工號 | 員工姓名 | 工序 | 開始時間 | 結束時間 | 訂單號 | 客戶名稱 | 規格 | 顏色 | 碼長 | 捲數 | 片長 | 片數 | 條數 | 刀數 | 異常時數合計 | 異常原因 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+
 ---
 
 ## 各系統效率計算邏輯
@@ -78,6 +86,7 @@ https://script.google.com/macros/s/AKfycbyKEIcvpKEeTG2iOdyEkIP93ofx1oCl4qLvs3WPv
 | 焊接 | **人工輸入點數** × 係數（選項目 + 規格分類後自動帶係數，點數手動輸入） |
 | 褙膠 | 卷數 × 係數（碼長 + 規格分類查表） |
 | 切勾 | 直接記錄切勾數量（不計算效率，無員工欄位） |
+| 裁切 | 不在前端計算，效率公式由 Sheets 另行設定 |
 
 ---
 
@@ -86,25 +95,45 @@ https://script.google.com/macros/s/AKfycbyKEIcvpKEeTG2iOdyEkIP93ofx1oCl4qLvs3WPv
 ### 分條 / 焊接 / 褙膠
 
 ```
-選生產日期
-    ↓
-選員工（工號或姓名，模糊搜尋）
-    ↓
-填上班時數 / 異常時數（+ 原因說明）/ 生產異常帶時數 / 新人扣時%
-    ↓
-逐行輸入產量
-    焊接：選項目 → 選規格分類 → 自動帶係數 → 手動輸入點數 → Enter 跳下一行
-    分條/褙膠：選規格 → 填數量 → Tab 跳下一行
-    ↓
-儲存紀錄 → 寫入 Sheets → 清空 → 跳回選員工
+選生產日期 → 選員工 → 填工時/異常 → 逐行輸入產量 → 儲存
+焊接：選項目 → 選規格 → 自動帶係數 → 手動輸入點數 → Enter 跳下一行
 ```
 
 ### 切勾
 
 ```
-填生產日期 / 上班時數 / 異常時數 / 異常原因 / 部門人數 / 切勾數量
+填日期 / 上班時數 / 異常時數 / 部門人數 / 切勾數量 → 儲存
+```
+
+### 裁切（process.html）
+
+```
+選生產日期 → 選員工
     ↓
-儲存紀錄 → 寫入 Sheets → 清空欄位
+新增異常時段（可多段，各填時數 + 原因）
+    ↓
+逐筆填寫品項（Enter 或「＋ 新增品項」按鈕）：
+  工序 / 開始時間 / 結束時間 / 訂單號 / 客戶名稱
+  投入：規格 / 顏色 / 碼長
+  產出：捲數 / 片長 / 片數 / 條數(預設1) / 刀數
+    ↓
+儲存紀錄 → 寫入 Sheets（每筆前端兩列 → Sheets 一列）
+```
+
+**必填驗證**：儲存時自動檢查，缺少欄位會紅框標示並提示「第N筆缺：規格、片長…」
+
+**自訂值警示**：規格/顏色/碼長若輸入不在 `裁切參數` 資料庫內的值，存入 Sheets 後可用條件式格式標黃（COUNTIF 公式自動判斷）
+
+---
+
+## 裁切 Sheets 條件式格式設定
+
+在 `裁切記錄` 的 J/K/L 欄各設一條條件式格式規則：
+
+```
+J欄（規格）：=COUNTIF(裁切參數!$B:$B, J2)=0  → 黃底
+K欄（顏色）：=COUNTIF(裁切參數!$D:$D, K2)=0  → 黃底
+L欄（碼長）：=COUNTIF(裁切參數!$C:$C, L2)=0  → 黃底
 ```
 
 ---
@@ -129,7 +158,7 @@ https://script.google.com/macros/s/AKfycbyKEIcvpKEeTG2iOdyEkIP93ofx1oCl4qLvs3WPv
 |---|---|---|
 | `GAS_URL` | 各 HTML 頂部 | GAS 部署網址（部署 ID 更換時需同步改） |
 
-**係數資料來源：動態從 GAS 載入**（不再硬寫在 HTML 裡）。員工清單、係數表每次開頁面重新抓取。
+**係數資料來源：動態從 GAS 載入**（不寫死在 HTML）。員工清單、係數表每次開頁面重新抓取。
 
 ---
 
@@ -148,9 +177,10 @@ https://script.google.com/macros/s/AKfycbyKEIcvpKEeTG2iOdyEkIP93ofx1oCl4qLvs3WPv
 - **去正規化儲存**：工時欄位每員工填一次，存入時每筆產量行都帶入，方便 Sheets SUMIF / 樞紐分析直接用
 - **時間戳 GAS 生成**：用 `Utilities.formatDate(new Date(), 'Asia/Taipei', ...)` 確保時區可控
 - **POST 無回傳確認**：no-cors 模式無法讀回應，前端樂觀顯示成功，約 3 秒後實際寫入
-- **新欄位加在末尾**：異常原因 / 新人扣時% 加在效率換算後面，避免改動 GAS getReport 的欄位索引
+- **新欄位加在末尾**：避免改動 GAS getReport 的欄位索引
 - **係數 0 視為空值**：部分規格特定碼長無係數，GAS 存 0，前端顯示「—」
 - **焊接點數手動輸入**：係數表 D 欄（點數）保留但前端不使用，點數改由使用者當天實際輸入
+- **裁切前端兩列 → Sheets 一列**：欄位多用兩列顯示方便操作，送出合併成一筆存入
 
 ---
 
