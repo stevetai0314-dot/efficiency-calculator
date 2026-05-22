@@ -406,13 +406,41 @@ function updateFooter() {
 }
 
 function validateAndHint() {
+  // 清除舊的紅框
+  document.querySelectorAll('.entry-block .is-invalid').forEach(el => el.classList.remove('is-invalid'));
+
   const missing = [];
   if (!document.getElementById('prod-date').value) missing.push('生產日期');
   if (!currentEmp) missing.push('員工');
-  const valid = getBlocks().filter(r => r.process);
-  if (!valid.length) missing.push('至少一筆工序');
+
+  const blocks = Array.from(document.querySelectorAll('.entry-block'));
+  const validBlocks = blocks.filter(b => b.querySelector('[data-field="process"]').value);
+  if (!validBlocks.length) { missing.push('至少一筆工序'); }
+
+  const REQUIRED_FIELDS = [
+    ['spec',      '規格'],
+    ['color',     '顏色'],
+    ['length',    '碼長'],
+    ['rolls',     '捲數'],
+    ['sheet-len', '片長'],
+    ['sheet-cnt', '片數'],
+    ['cuts',      '刀數'],
+  ];
+
+  validBlocks.forEach((block, i) => {
+    const rowMissing = [];
+    REQUIRED_FIELDS.forEach(([field, label]) => {
+      const el = block.querySelector(`[data-field="${field}"]`);
+      if (!el.value || el.value === '') {
+        el.classList.add('is-invalid');
+        rowMissing.push(label);
+      }
+    });
+    if (rowMissing.length) missing.push(`第${i + 1}筆缺：${rowMissing.join('、')}`);
+  });
+
   if (missing.length) {
-    showMsg('尚未填寫：' + missing.join('、'), 'error');
+    showMsg(missing.join('　'), 'error');
     return false;
   }
   return true;
