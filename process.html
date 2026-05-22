@@ -314,23 +314,23 @@ function addRow() {
       <div class="entry-group grp-out">
         <div class="field-group">
           <div class="entry-label">捲數</div>
-          <input type="number" class="form-control form-control-sm text-center" data-field="rolls" min="0" step="1" placeholder="0" style="width:60px">
+          <input type="number" class="form-control form-control-sm text-center" data-field="rolls" min="0" step="1" placeholder="0" style="width:90px">
         </div>
         <div class="field-group">
           <div class="entry-label">片長</div>
-          <input type="number" class="form-control form-control-sm text-center" data-field="sheet-len" min="0" step="1" placeholder="0" style="width:60px">
+          <input type="number" class="form-control form-control-sm text-center" data-field="sheet-len" min="0" step="1" placeholder="0" style="width:90px">
         </div>
         <div class="field-group">
           <div class="entry-label">片數</div>
-          <input type="number" class="form-control form-control-sm text-center" data-field="sheet-cnt" min="0" step="1" placeholder="0" style="width:60px">
+          <input type="number" class="form-control form-control-sm text-center" data-field="sheet-cnt" min="0" step="1" placeholder="0" style="width:90px">
         </div>
         <div class="field-group">
           <div class="entry-label">條數</div>
-          <input type="number" class="form-control form-control-sm text-center" data-field="strips" min="1" step="1" value="1" style="width:55px">
+          <input type="number" class="form-control form-control-sm text-center" data-field="strips" min="1" step="1" value="1" style="width:82px">
         </div>
         <div class="field-group">
           <div class="entry-label">刀數</div>
-          <input type="number" class="form-control form-control-sm text-center" data-field="cuts" min="0" step="1" placeholder="0" style="width:60px">
+          <input type="number" class="form-control form-control-sm text-center" data-field="cuts" min="0" step="1" placeholder="0" style="width:90px">
         </div>
       </div>
     </div>
@@ -341,7 +341,20 @@ function addRow() {
   updateFooter();
 }
 
+function bindTimeInput(el) {
+  el.addEventListener('input', function() {
+    const digits = this.value.replace(/\D/g, '').slice(0, 4);
+    if (digits.length <= 2) {
+      this.value = digits;
+    } else {
+      this.value = digits.slice(0, 2) + ':' + digits.slice(2);
+    }
+  });
+}
+
 function bindBlockEvents(block) {
+  block.querySelectorAll('[data-field="start-time"], [data-field="end-time"]').forEach(bindTimeInput);
+
   block.querySelector('[data-field="end-time"]').addEventListener('change', e => {
     const allBlocks = Array.from(document.querySelectorAll('.entry-block'));
     const idx = allBlocks.indexOf(block);
