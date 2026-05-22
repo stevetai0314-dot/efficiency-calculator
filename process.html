@@ -124,7 +124,7 @@
   <div class="card shadow-sm">
     <div class="card-body py-2 d-flex align-items-center">
       <span class="text-muted small me-3">共 <strong id="row-count">0</strong> 筆</span>
-      <button id="btn-save" class="btn btn-primary ms-auto" disabled>儲存紀錄</button>
+      <button id="btn-save" class="btn btn-primary ms-auto">儲存紀錄</button>
     </div>
   </div>
 </div>
@@ -403,16 +403,26 @@ function getBlocks() {
 function updateFooter() {
   const valid = getBlocks().filter(r => r.process);
   document.getElementById('row-count').textContent = valid.length;
-  document.getElementById('btn-save').disabled =
-    !currentEmp || !valid.length || !document.getElementById('prod-date').value;
+}
+
+function validateAndHint() {
+  const missing = [];
+  if (!document.getElementById('prod-date').value) missing.push('生產日期');
+  if (!currentEmp) missing.push('員工');
+  const valid = getBlocks().filter(r => r.process);
+  if (!valid.length) missing.push('至少一筆工序');
+  if (missing.length) {
+    showMsg('尚未填寫：' + missing.join('、'), 'error');
+    return false;
+  }
+  return true;
 }
 
 // ── 儲存 ─────────────────────────────────────────────────────
 function onSave() {
+  if (!validateAndHint()) return;
   const date = document.getElementById('prod-date').value;
-  if (!date || !currentEmp) return;
   const validBlocks = getBlocks().filter(r => r.process);
-  if (!validBlocks.length) { showMsg('沒有有效的記錄', 'error'); return; }
 
   const abn = getAbnData();
   const btn = document.getElementById('btn-save');
