@@ -351,28 +351,11 @@ function bindTimeInput(el) {
   el.addEventListener('focus', function() {
     if (this.value) this.select();
   });
-  el.addEventListener('keydown', function(e) {
-    if (e.key === 'Backspace') {
-      e.preventDefault();
-      const selAll = this.selectionStart === 0 && this.selectionEnd === this.value.length;
-      const d = selAll ? '' : this.value.replace(/\D/g, '').slice(0, -1);
-      this.value = normalizeTime(d);
-      this.dispatchEvent(new Event('input', { bubbles: true }));
-      return;
-    }
-    if (e.key === 'Delete') {
-      e.preventDefault();
-      this.value = '';
-      this.dispatchEvent(new Event('input', { bubbles: true }));
-      return;
-    }
-    if (!e.ctrlKey && !e.metaKey && !e.altKey && /^\d$/.test(e.key)) {
-      e.preventDefault();
-      const selAll = this.selectionStart === 0 && this.selectionEnd === this.value.length;
-      const base = selAll ? '' : this.value.replace(/\D/g, '');
-      this.value = normalizeTime((base + e.key).slice(0, 4));
-      this.dispatchEvent(new Event('input', { bubbles: true }));
-    }
+  el.addEventListener('input', function() {
+    const d = this.value.replace(/\D/g, '').slice(0, 4);
+    const v = d.length <= 2 ? d : d.slice(0, 2) + ':' + d.slice(2);
+    this.value = v;
+    this.setSelectionRange(v.length, v.length);
   });
 }
 
