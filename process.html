@@ -17,30 +17,33 @@
     .ac-item:hover, .ac-item.ac-active { background: #e7f1ff; }
     .ac-item mark { background: none; color: #0d6efd; font-weight: 700; padding: 0; }
 
-    .row-entry {
+    .entry-block {
+      border: 1px solid #dee2e6; border-radius: .375rem;
+      padding: 6px 8px; margin-bottom: 6px; background: #fff;
+    }
+    .entry-block:hover { border-color: #9ec5fe; }
+
+    .entry-row1 {
       display: grid;
-      grid-template-columns: 90px 72px 72px 80px 90px 100px 70px 75px 52px 52px 52px 50px 50px 30px;
-      gap: 4px; align-items: center; margin-bottom: 5px;
+      grid-template-columns: 110px 200px 200px 130px 120px 32px;
+      gap: 6px; align-items: center; margin-bottom: 5px;
     }
-    .head-row {
-      display: grid;
-      grid-template-columns: 90px 72px 72px 80px 90px 100px 70px 75px 52px 52px 52px 50px 50px 30px;
-      gap: 4px; padding-bottom: 6px;
-      border-bottom: 1px solid #dee2e6; margin-bottom: 8px;
+    .entry-row2 { display: flex; gap: 8px; align-items: stretch; }
+    .entry-group {
+      display: flex; gap: 6px; align-items: center;
+      border: 1px solid #dee2e6; border-radius: .375rem;
+      padding: 5px 8px;
     }
-    .head-row span {
-      font-size: 10px; color: #6c757d; text-align: center;
-      letter-spacing: .03em; white-space: nowrap;
-    }
-    .head-row span:first-child { text-align: left; }
-    .div-left { border-left: 2px solid #dee2e6; padding-left: 4px; }
+    .entry-group.grp-in  { background: #f0f4ff; border-color: #b6c8f5; }
+    .entry-group.grp-out { background: #f0fff4; border-color: #a3d9b1; }
+    .field-group { display: flex; flex-direction: column; }
+    .entry-label { font-size: 10px; color: #6c757d; margin-bottom: 2px; }
 
     .abn-row {
       display: grid;
       grid-template-columns: 90px 1fr 30px;
       gap: 6px; align-items: center; margin-bottom: 5px;
     }
-    input[type="time"] { font-size: 12px; }
     .custom-val { background-color: #fff3cd !important; }
 
     .toast-msg {
@@ -75,7 +78,7 @@
 
 <div class="container-fluid px-3 py-3">
 
-  <!-- 頂部：日期 + 員工 -->
+  <!-- 頂部 -->
   <div class="card shadow-sm mb-3">
     <div class="card-body py-2">
       <div class="row g-2 align-items-end flex-wrap">
@@ -95,7 +98,7 @@
     </div>
   </div>
 
-  <!-- 異常時段：多區段 -->
+  <!-- 異常時段 -->
   <div class="card shadow-sm mb-3">
     <div class="card-body py-2 px-3">
       <div class="d-flex align-items-center mb-2">
@@ -108,25 +111,12 @@
 
   <!-- 明細列 -->
   <div class="card shadow-sm mb-3">
-    <div class="card-body py-2 px-3" style="overflow-x:auto">
-      <div class="head-row">
-        <span style="text-align:left">工序</span>
-        <span>開始</span>
-        <span>結束</span>
-        <span>訂單號</span>
-        <span>客戶</span>
-        <span>規格</span>
-        <span>顏色</span>
-        <span>碼長</span>
-        <span>捲數</span>
-        <span class="div-left">片長</span>
-        <span>片數</span>
-        <span>條數</span>
-        <span>刀數</span>
-        <span></span>
-      </div>
-      <div id="rows"></div>
+    <div class="card-body py-2 px-3">
       <div id="loading-specs" class="text-muted small text-center py-2">載入資料中…</div>
+      <div id="rows"></div>
+      <button id="btn-add-row" class="btn btn-sm btn-outline-primary mt-1" onclick="addRow()" style="display:none">
+        ＋ 新增品項
+      </button>
     </div>
   </div>
 
@@ -152,8 +142,8 @@ let specsReady = false;
 
 let employees  = [];
 let currentEmp = null;
-let rowId  = 0;
-let abnId  = 0;
+let rowId = 0;
+let abnId = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('prod-date').value = new Date().toLocaleDateString('en-CA');
@@ -163,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-save').addEventListener('click', onSave);
 });
 
-// ── 資料載入 ─────────────────────────────────────────────────
+// ── 載入資料 ─────────────────────────────────────────────────
 function loadSpecs() {
   jsonpCall(GAS_URL + '?action=getSpecs&system=process', data => {
     if (data) {
@@ -173,6 +163,7 @@ function loadSpecs() {
       COLORS     = data.colors    || [];
       specsReady = true;
       document.getElementById('loading-specs').style.display = 'none';
+      document.getElementById('btn-add-row').style.display = '';
       if (currentEmp) addRow();
     } else {
       document.getElementById('loading-specs').textContent = '資料載入失敗，請重新整理';
@@ -241,11 +232,9 @@ function selectEmp(id) {
 
 // ── 異常區段 ─────────────────────────────────────────────────
 function addAbnRow() {
-  const id  = ++abnId;
   const div = document.createElement('div');
-  div.className  = 'abn-row';
-  div.dataset.id = id;
-  div.innerHTML  = `
+  div.className = 'abn-row';
+  div.innerHTML = `
     <input type="number" class="form-control form-control-sm text-end" placeholder="異常時數" min="0" step="0.5">
     <input type="text"   class="form-control form-control-sm" placeholder="原因說明…">
     <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="this.closest('.abn-row').remove()">✕</button>
@@ -254,95 +243,137 @@ function addAbnRow() {
 }
 
 function getAbnData() {
-  const rows = document.querySelectorAll('#abn-rows .abn-row');
   let total = 0;
   const reasons = [];
-  rows.forEach(r => {
+  document.querySelectorAll('#abn-rows .abn-row').forEach(r => {
     const h = parseFloat(r.querySelector('input[type="number"]').value) || 0;
     const reason = r.querySelector('input[type="text"]').value.trim();
-    if (h > 0 || reason) {
-      total += h;
-      if (reason) reasons.push(`${reason}${h ? ' ' + h + 'h' : ''}`);
-    }
+    total += h;
+    if (reason) reasons.push(`${reason}${h ? ' ' + h + 'h' : ''}`);
   });
   return { total, reason: reasons.join('；') };
 }
 
 // ── 明細列 ───────────────────────────────────────────────────
 function addRow() {
-  const id  = ++rowId;
-  const div = document.createElement('div');
-  div.className  = 'row-entry';
-  div.dataset.id = id;
+  const id = ++rowId;
+  const block = document.createElement('div');
+  block.className  = 'entry-block';
+  block.dataset.id = id;
 
-  const allRows = document.querySelectorAll('.row-entry');
-  const prevEnd = allRows.length > 0
-    ? (allRows[allRows.length - 1].querySelector('[data-field="end-time"]').value || '')
+  const allBlocks = document.querySelectorAll('.entry-block');
+  const prevEnd = allBlocks.length > 0
+    ? (allBlocks[allBlocks.length - 1].querySelector('[data-field="end-time"]').value || '')
     : '';
 
-  div.innerHTML = `
-    <select class="form-select form-select-sm" data-field="process">
-      <option value="">— 工序 —</option>
-      ${PROCESSES.map(p => `<option value="${p}">${p}</option>`).join('')}
-    </select>
-    <input type="time" class="form-control form-control-sm" data-field="start-time" value="${prevEnd}">
-    <input type="time" class="form-control form-control-sm" data-field="end-time">
-    <input type="text" class="form-control form-control-sm" data-field="order-no" placeholder="訂單號">
-    <input type="text" class="form-control form-control-sm" data-field="customer" placeholder="客戶">
-    <input list="spec-list-${id}" class="form-control form-control-sm" data-field="spec" placeholder="規格" autocomplete="off">
-    <datalist id="spec-list-${id}">${SPECS.map(s => `<option value="${s}">`).join('')}</datalist>
-    <input list="col-list-${id}"  class="form-control form-control-sm" data-field="color" placeholder="顏色" autocomplete="off">
-    <datalist id="col-list-${id}">${COLORS.map(c => `<option value="${c}">`).join('')}</datalist>
-    <input list="len-list-${id}"  class="form-control form-control-sm" data-field="length" placeholder="碼長" autocomplete="off">
-    <datalist id="len-list-${id}">${LENGTHS.map(l => `<option value="${l}">`).join('')}</datalist>
-    <input type="number" class="form-control form-control-sm text-center" data-field="rolls" min="0" step="1" placeholder="0">
-    <input type="number" class="form-control form-control-sm text-center div-left" data-field="sheet-len" min="0" step="1" placeholder="0">
-    <input type="number" class="form-control form-control-sm text-center" data-field="sheet-cnt" min="0" step="1" placeholder="0">
-    <input type="number" class="form-control form-control-sm text-center" data-field="strips" min="1" step="1" value="1">
-    <input type="number" class="form-control form-control-sm text-center" data-field="cuts" min="0" step="1" placeholder="0">
-    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteRow(${id})">✕</button>
+  block.innerHTML = `
+    <div class="entry-row1">
+      <div class="field-group">
+        <div class="entry-label">工序</div>
+        <select class="form-select form-select-sm" data-field="process">
+          <option value="">— 工序 —</option>
+          ${PROCESSES.map(p => `<option value="${p}">${p}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field-group">
+        <div class="entry-label">開始時間</div>
+        <input type="text" class="form-control form-control-sm" data-field="start-time" value="${prevEnd}" placeholder="08:00" maxlength="5">
+      </div>
+      <div class="field-group">
+        <div class="entry-label">結束時間</div>
+        <input type="text" class="form-control form-control-sm" data-field="end-time" placeholder="17:00" maxlength="5">
+      </div>
+      <div class="field-group">
+        <div class="entry-label">訂單號</div>
+        <input type="text" class="form-control form-control-sm" data-field="order-no" placeholder="訂單號">
+      </div>
+      <div class="field-group">
+        <div class="entry-label">客戶名稱</div>
+        <input type="text" class="form-control form-control-sm" data-field="customer" placeholder="客戶">
+      </div>
+      <button class="btn btn-sm btn-outline-danger py-0 px-1 align-self-end mb-1" onclick="deleteRow(${id})">✕</button>
+    </div>
+    <div class="entry-row2">
+      <div class="entry-group grp-in">
+        <div class="field-group">
+          <div class="entry-label">規格</div>
+          <input list="spec-list-${id}" class="form-control form-control-sm" data-field="spec" placeholder="規格" autocomplete="off" style="width:120px">
+          <datalist id="spec-list-${id}">${SPECS.map(s => `<option value="${s}">`).join('')}</datalist>
+        </div>
+        <div class="field-group">
+          <div class="entry-label">顏色</div>
+          <input list="col-list-${id}" class="form-control form-control-sm" data-field="color" placeholder="顏色" autocomplete="off" style="width:80px">
+          <datalist id="col-list-${id}">${COLORS.map(c => `<option value="${c}">`).join('')}</datalist>
+        </div>
+        <div class="field-group">
+          <div class="entry-label">碼長</div>
+          <input list="len-list-${id}" class="form-control form-control-sm" data-field="length" placeholder="碼長" autocomplete="off" style="width:80px">
+          <datalist id="len-list-${id}">${LENGTHS.map(l => `<option value="${l}">`).join('')}</datalist>
+        </div>
+      </div>
+      <div class="entry-group grp-out">
+        <div class="field-group">
+          <div class="entry-label">捲數</div>
+          <input type="number" class="form-control form-control-sm text-center" data-field="rolls" min="0" step="1" placeholder="0" style="width:60px">
+        </div>
+        <div class="field-group">
+          <div class="entry-label">片長</div>
+          <input type="number" class="form-control form-control-sm text-center" data-field="sheet-len" min="0" step="1" placeholder="0" style="width:60px">
+        </div>
+        <div class="field-group">
+          <div class="entry-label">片數</div>
+          <input type="number" class="form-control form-control-sm text-center" data-field="sheet-cnt" min="0" step="1" placeholder="0" style="width:60px">
+        </div>
+        <div class="field-group">
+          <div class="entry-label">條數</div>
+          <input type="number" class="form-control form-control-sm text-center" data-field="strips" min="1" step="1" value="1" style="width:55px">
+        </div>
+        <div class="field-group">
+          <div class="entry-label">刀數</div>
+          <input type="number" class="form-control form-control-sm text-center" data-field="cuts" min="0" step="1" placeholder="0" style="width:60px">
+        </div>
+      </div>
+    </div>
   `;
-  document.getElementById('rows').appendChild(div);
-  bindRowEvents(div);
-  div.querySelector('[data-field="process"]').focus();
+  document.getElementById('rows').appendChild(block);
+  bindBlockEvents(block);
+  block.querySelector('[data-field="process"]').focus();
   updateFooter();
 }
 
-function bindRowEvents(div) {
-  // 結束時間 → 自動帶入下一列開始時間
-  div.querySelector('[data-field="end-time"]').addEventListener('change', e => {
-    const allRows = Array.from(document.querySelectorAll('.row-entry'));
-    const idx = allRows.indexOf(div);
-    if (idx < allRows.length - 1) {
-      const nextStart = allRows[idx + 1].querySelector('[data-field="start-time"]');
+function bindBlockEvents(block) {
+  block.querySelector('[data-field="end-time"]').addEventListener('change', e => {
+    const allBlocks = Array.from(document.querySelectorAll('.entry-block'));
+    const idx = allBlocks.indexOf(block);
+    if (idx < allBlocks.length - 1) {
+      const nextStart = allBlocks[idx + 1].querySelector('[data-field="start-time"]');
       if (!nextStart.value) nextStart.value = e.target.value;
     }
   });
 
-  // 刀數 Enter → 跳下一列或新增
-  div.querySelector('[data-field="cuts"]').addEventListener('keydown', e => {
+  block.querySelector('[data-field="cuts"]').addEventListener('keydown', e => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      const allRows = document.querySelectorAll('.row-entry');
-      if (div === allRows[allRows.length - 1]) addRow();
-      else div.nextElementSibling.querySelector('[data-field="process"]').focus();
+      const allBlocks = Array.from(document.querySelectorAll('.entry-block'));
+      const idx = allBlocks.indexOf(block);
+      if (idx === allBlocks.length - 1) addRow();
+      else allBlocks[idx + 1].querySelector('[data-field="process"]').focus();
     }
   });
 
-  // 規格/顏色/碼長：非資料庫值標黃
   [['spec', SPECS], ['color', COLORS], ['length', LENGTHS]].forEach(([field, list]) => {
-    div.querySelector(`[data-field="${field}"]`).addEventListener('change', function() {
+    block.querySelector(`[data-field="${field}"]`).addEventListener('change', function() {
       this.classList.toggle('custom-val', !!this.value && !list.includes(this.value.trim()));
     });
   });
 
-  div.querySelectorAll('input,select').forEach(el =>
+  block.querySelectorAll('input,select').forEach(el =>
     el.addEventListener('input', updateFooter)
   );
 }
 
 function deleteRow(id) {
-  document.querySelector(`.row-entry[data-id="${id}"]`)?.remove();
+  document.querySelector(`.entry-block[data-id="${id}"]`)?.remove();
   updateFooter();
 }
 
@@ -351,26 +382,26 @@ function clearRows() {
   rowId = 0;
 }
 
-function getRows() {
-  return Array.from(document.querySelectorAll('.row-entry')).map(row => ({
-    process:  row.querySelector('[data-field="process"]').value,
-    startTime:row.querySelector('[data-field="start-time"]').value,
-    endTime:  row.querySelector('[data-field="end-time"]').value,
-    orderNo:  row.querySelector('[data-field="order-no"]').value.trim(),
-    customer: row.querySelector('[data-field="customer"]').value.trim(),
-    spec:     row.querySelector('[data-field="spec"]').value.trim(),
-    color:    row.querySelector('[data-field="color"]').value.trim(),
-    length:   row.querySelector('[data-field="length"]').value.trim(),
-    rolls:    parseFloat(row.querySelector('[data-field="rolls"]').value)     || 0,
-    sheetLen: parseFloat(row.querySelector('[data-field="sheet-len"]').value) || 0,
-    sheetCnt: parseFloat(row.querySelector('[data-field="sheet-cnt"]').value) || 0,
-    strips:   parseFloat(row.querySelector('[data-field="strips"]').value)    || 1,
-    cuts:     parseFloat(row.querySelector('[data-field="cuts"]').value)      || 0,
+function getBlocks() {
+  return Array.from(document.querySelectorAll('.entry-block')).map(b => ({
+    process:  b.querySelector('[data-field="process"]').value,
+    startTime:b.querySelector('[data-field="start-time"]').value,
+    endTime:  b.querySelector('[data-field="end-time"]').value,
+    orderNo:  b.querySelector('[data-field="order-no"]').value.trim(),
+    customer: b.querySelector('[data-field="customer"]').value.trim(),
+    spec:     b.querySelector('[data-field="spec"]').value.trim(),
+    color:    b.querySelector('[data-field="color"]').value.trim(),
+    length:   b.querySelector('[data-field="length"]').value.trim(),
+    rolls:    parseFloat(b.querySelector('[data-field="rolls"]').value)     || 0,
+    sheetLen: parseFloat(b.querySelector('[data-field="sheet-len"]').value) || 0,
+    sheetCnt: parseFloat(b.querySelector('[data-field="sheet-cnt"]').value) || 0,
+    strips:   parseFloat(b.querySelector('[data-field="strips"]').value)    || 1,
+    cuts:     parseFloat(b.querySelector('[data-field="cuts"]').value)      || 0,
   }));
 }
 
 function updateFooter() {
-  const valid = getRows().filter(r => r.process);
+  const valid = getBlocks().filter(r => r.process);
   document.getElementById('row-count').textContent = valid.length;
   document.getElementById('btn-save').disabled =
     !currentEmp || !valid.length || !document.getElementById('prod-date').value;
@@ -380,14 +411,14 @@ function updateFooter() {
 function onSave() {
   const date = document.getElementById('prod-date').value;
   if (!date || !currentEmp) return;
-  const validRows = getRows().filter(r => r.process);
-  if (!validRows.length) { showMsg('沒有有效的記錄', 'error'); return; }
+  const validBlocks = getBlocks().filter(r => r.process);
+  if (!validBlocks.length) { showMsg('沒有有效的記錄', 'error'); return; }
 
   const abn = getAbnData();
   const btn = document.getElementById('btn-save');
   btn.disabled = true; btn.textContent = '儲存中…';
 
-  const records = validRows.map(r => ({
+  const records = validBlocks.map(r => ({
     empId: currentEmp.id, empName: currentEmp.name,
     ...r,
     abnormalHoursTotal: abn.total,
@@ -399,7 +430,7 @@ function onSave() {
     body: JSON.stringify({ action: 'saveRecords', records, date, system: 'process' }),
   }).catch(() => {});
 
-  showMsg(`已送出 ${validRows.length} 筆（約 3 秒後寫入 Sheets）`, 'success');
+  showMsg(`已送出 ${validBlocks.length} 筆（約 3 秒後寫入 Sheets）`, 'success');
   clearRows();
   document.getElementById('emp-input').value = '';
   document.getElementById('abn-rows').innerHTML = '';
