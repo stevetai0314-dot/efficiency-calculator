@@ -30,6 +30,8 @@
     #tab-slitting th { font-size: 12px; }
     .no-data { color: #ced4da; }
     .no-data-div { color: #adb5bd; text-align: center; padding: 20px; font-size: 13px; }
+    .day-holiday td { background: #ffe5e5 !important; color: #b02020 !important; }
+    .day-holiday .col-inv { background: #ffd8d8 !important; }
   </style>
 </head>
 <body>
@@ -78,6 +80,7 @@
         <span class="me-2 eff-high">■ ≥100%</span>
         <span class="me-2 eff-mid">■ 90–99%</span>
         <span class="eff-low">■ &lt;90%</span>
+        <span class="ms-2" style="color:#b02020;font-weight:600">■ 假日</span>
       </div>
     </div>
 
@@ -116,7 +119,7 @@
       <thead class="table-primary text-center">
         <tr>
           <th rowspan="2" style="width:55px;vertical-align:middle">日期</th>
-          <th rowspan="2" style="width:45px;vertical-align:middle">出勤<br>人數</th>
+          <th rowspan="2" style="width:45px;vertical-align:middle">機台<br>數量</th>
           <th colspan="2" class="col-inv">庫存參考</th>
           <th colspan="4">效率計算</th>
         </tr>
@@ -198,7 +201,7 @@ function fmt0(v) { return Math.round(v).toLocaleString(); }
 function fmt2(v) { return v.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}); }
 
 function renderSlittingReport(data) {
-  const { monthly, daily, currentMonth, currentYear } = data;
+  const { monthly, daily, machineCounts = {}, currentMonth, currentYear } = data;
 
   document.getElementById('slitting-year-label').textContent = `${currentYear} 年分條效率月報`;
   document.getElementById('slitting-daily-title').textContent =
@@ -257,10 +260,28 @@ function renderSlittingReport(data) {
   const dMap = {};
   daily.forEach(d => { dMap[d.day] = d; });
 
+  const today = new Date();
+  const todayYear = today.getFullYear();
+  const todayMonth = today.getMonth() + 1;
+  const todayDay = today.getDate();
+
   let dR = 0, dE = 0, dH = 0, dOK = false;
   const drows = [];
   for (let day = 1; day <= daysInMonth; day++) {
     const dd = dMap[day];
+    const dayKey = `${String(currentMonth).padStart(2,'0')}/${String(day).padStart(2,'0')}`;
+    const machines = machineCounts[dayKey] || 0;
+
+    const dateObj  = new Date(currentYear, currentMonth - 1, day);
+    const isSunday = dateObj.getDay() === 0;
+    const isToday  = currentYear === todayYear && currentMonth === todayMonth && day === todayDay;
+    const isPast   = !isToday && (
+      currentYear < todayYear ||
+      (currentYear === todayYear && currentMonth < todayMonth) ||
+      (currentYear === todayYear && currentMonth === todayMonth && day < todayDay)
+    );
+    const isHoliday = !dd && (isSunday || isPast);
+
     if (dd) {
       dR += dd.rolls; dE += dd.effRolls; dH += dd.weightedHours; dOK = true;
       const jPerP = dd.weightedHours > 0 ? dd.rolls / dd.weightedHours : 0;
@@ -269,7 +290,7 @@ function renderSlittingReport(data) {
       const cls   = eff >= 1 ? 'eff-high' : eff >= 0.9 ? 'eff-mid' : 'eff-low';
       drows.push(`<tr>
         <td class="text-center fw-semibold">${currentMonth}/${day}</td>
-        <td class="text-center">${dd.headcount}</td>
+        <td class="text-center">${machines || '—'}</td>
         <td class="text-end col-inv">${fmt0(dd.rolls)}</td>
         <td class="text-end col-inv">${jPerP.toFixed(2)}</td>
         <td class="text-end">${fmt2(dd.effRolls)}</td>
@@ -277,9 +298,15 @@ function renderSlittingReport(data) {
         <td class="text-end">${oPerP.toFixed(2)}</td>
         <td class="text-center ${cls}">${(eff * 100).toFixed(1)}%</td>
       </tr>`);
+    } else if (isHoliday) {
+      drows.push(`<tr class="day-holiday text-center">
+        <td class="fw-semibold">${currentMonth}/${day}</td><td>—</td>
+        <td class="col-inv">—</td><td class="col-inv">—</td>
+        <td>—</td><td>—</td><td>—</td><td>—</td>
+      </tr>`);
     } else {
       drows.push(`<tr class="no-data text-center">
-        <td>${currentMonth}/${day}</td><td>—</td>
+        <td class="text-dark fw-semibold">${currentMonth}/${day}</td><td>—</td>
         <td class="col-inv">—</td><td class="col-inv">—</td>
         <td>—</td><td>—</td><td>—</td><td>—</td>
       </tr>`);
@@ -295,7 +322,7 @@ function renderSlittingReport(data) {
     const eff   = oPerP / TARGET_SLIT;
     const cls   = eff >= 1 ? 'eff-high' : eff >= 0.9 ? 'eff-mid' : 'eff-low';
     dfoot.innerHTML = `<tr class="text-center">
-      <td>月合計</td><td>—</td>
+      <td>月合計</td><td class="text-center">—</td>
       <td class="text-end col-inv">${fmt0(dR)}</td>
       <td class="text-end col-inv">${jPerP.toFixed(2)}</td>
       <td class="text-end">${fmt2(dE)}</td>
