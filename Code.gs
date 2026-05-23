@@ -343,7 +343,10 @@ function getSlittingReport_() {
   if (recSheet) {
     const rows = recSheet.getDataRange().getValues();
     for (let i = 1; i < rows.length; i++) {
-      const dateStr  = String(rows[i][0] || '').trim();
+      const rawDate  = rows[i][0];
+      const dateStr  = rawDate instanceof Date
+        ? Utilities.formatDate(rawDate, tz, 'yyyy/MM/dd')
+        : String(rawDate || '').trim();
       const empId    = String(rows[i][2] || '').trim();
       const workH    = Number(rows[i][4]) || 0;
       const abnH     = Number(rows[i][5]) || 0;
