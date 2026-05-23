@@ -14,6 +14,9 @@ function doGet(e) {
   if (action === 'getReport') {
     return jsonp_(callback, getReport_(system));
   }
+  if (action === 'getSlittingReport') {
+    return jsonp_(callback, getSlittingReport_());
+  }
   return HtmlService.createHtmlOutputFromFile('index')
     .setTitle('效率換算工具')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -235,6 +238,9 @@ function getOrCreateSheet_(name, system) {
     }
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
     sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+    if (system !== 'cutting') {
+      sheet.getRange('C:C').setNumberFormat('@');
+    }
   }
   return sheet;
 }
@@ -301,4 +307,123 @@ function getReport_(system) {
     .sort((a, b) => a.date.localeCompare(b.date));
 
   return { monthly: monthlyArr, daily: dailyArr, currentMonth, currentYear };
+}
+
+// ── 分條詳細報表（月報 + 日報）────────────────────────────────────────────────
+
+function getSlittingReport_() {
+  const ss = SpreadsheetApp.openById(SS_ID);
+  const tz = 'Asia/Ho_Chi_Minh';
+  const now = new Date();
+  const currentYear  = Number(Utilities.formatDate(now, tz, 'yyyy'));
+  const currentMonth = Number(Utilities.formatDate(now, tz, 'MM'));
+
+  // 歷史月報匯總（A=年,B=月,C=捲數,D=效率捲數,E=加權工時）
+  const histMap = {};
+  const histSheet = ss.getSheetByName('分條月報匯總');
+  if (histSheet) {
+    const hd = histSheet.getDataRange().getValues();
+    for (let i = 1; i < hd.length; i++) {
+      const y = Number(hd[i][0]), m = Number(hd[i][1]);
+      if (!y || !m) continue;
+      histMap[`${y}-${m}`] = {
+        rolls: Number(hd[i][2]) || 0,
+        effRolls: Number(hd[i][3]) || 0,
+        weightedHours: Number(hd[i][4]) || 0
+      };
+    }
+  }
+
+  // 分條記錄明細
+  // 欄位索引：0=生產日期,2=工號,4=上班時數,5=異常時數,6=生產異常帶時數,9=捲數,11=效率換算
+  const monthlyDet = {}; // month -> {rolls, effRolls, weightedHours, empDays:{}}
+  const dailyDet   = {}; // 'MM/dd' -> {rolls, effRolls, weightedHours, empSet:{}}
+
+  const recSheet = ss.getSheetByName('分條記錄');
+  if (recSheet) {
+    const rows = recSheet.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      const dateStr  = String(rows[i][0] || '').trim();
+      const empId    = String(rows[i][2] || '').trim();
+      const workH    = Number(rows[i][4]) || 0;
+      const abnH     = Number(rows[i][5]) || 0;
+      const prodAbnH = Number(rows[i][6]) || 0;
+      const rolls    = Number(rows[i][9]) || 0;
+      const effRolls = Number(rows[i][11]) || 0;
+
+      if (!dateStr || !workH) continue;
+
+      const parts = dateStr.split(/[\/\-]/);
+      if (parts.length < 3) continue;
+      const year  = Number(parts[0]);
+      const month = Number(parts[1]);
+      const day   = Number(parts[2]);
+      if (year !== currentYear) continue;
+
+      const P          = workH - abnH - prodAbnH * 0.2;
+      const empDayKey  = `${empId}|${dateStr}`;
+
+      if (!monthlyDet[month]) monthlyDet[month] = { rolls: 0, effRolls: 0, weightedHours: 0, empDays: {} };
+      if (!monthlyDet[month].empDays[empDayKey]) {
+        monthlyDet[month].empDays[empDayKey] = true;
+        monthlyDet[month].weightedHours += P;
+      }
+      monthlyDet[month].rolls    += rolls;
+      monthlyDet[month].effRolls += effRolls;
+
+      if (month === currentMonth) {
+        const dayKey = `${String(month).padStart(2,'0')}/${String(day).padStart(2,'0')}`;
+        if (!dailyDet[dayKey]) dailyDet[dayKey] = { rolls: 0, effRolls: 0, weightedHours: 0, empSet: {} };
+        if (!dailyDet[dayKey].empSet[empId]) {
+          dailyDet[dayKey].empSet[empId] = true;
+          dailyDet[dayKey].weightedHours += P;
+        }
+        dailyDet[dayKey].rolls    += rolls;
+        dailyDet[dayKey].effRolls += effRolls;
+      }
+    }
+  }
+
+  // 建立月報陣列（1 到 currentMonth）
+  const monthly = [];
+  for (let m = 1; m <= currentMonth; m++) {
+    const det = monthlyDet[m];
+    if (det) {
+      monthly.push({
+        month: m,
+        rolls: Math.round(det.rolls * 10) / 10,
+        effRolls: Math.round(det.effRolls * 100) / 100,
+        weightedHours: Math.round(det.weightedHours * 100) / 100,
+        hasData: true, isHistorical: false
+      });
+    } else {
+      const hist = histMap[`${currentYear}-${m}`];
+      if (hist && (hist.rolls || hist.effRolls || hist.weightedHours)) {
+        monthly.push({
+          month: m,
+          rolls: Math.round(hist.rolls * 10) / 10,
+          effRolls: Math.round(hist.effRolls * 100) / 100,
+          weightedHours: Math.round(hist.weightedHours * 100) / 100,
+          hasData: true, isHistorical: true
+        });
+      } else {
+        monthly.push({ month: m, hasData: false, isHistorical: false });
+      }
+    }
+  }
+
+  // 建立日報陣列（當月有資料的日期）
+  const daily = Object.keys(dailyDet).map(dayKey => {
+    const dd = dailyDet[dayKey];
+    return {
+      date: dayKey,
+      day: Number(dayKey.split('/')[1]),
+      headcount: Object.keys(dd.empSet).length,
+      rolls: Math.round(dd.rolls * 10) / 10,
+      effRolls: Math.round(dd.effRolls * 100) / 100,
+      weightedHours: Math.round(dd.weightedHours * 100) / 100
+    };
+  }).sort((a, b) => a.day - b.day);
+
+  return { monthly, daily, currentMonth, currentYear };
 }
