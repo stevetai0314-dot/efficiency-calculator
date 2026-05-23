@@ -428,5 +428,25 @@ function getSlittingReport_() {
     };
   }).sort((a, b) => a.day - b.day);
 
-  return { monthly, daily, currentMonth, currentYear };
+  // 機台數量（分條日報備注：A=日期, B=機台數量，只讀當月）
+  const machineCounts = {};
+  const machineSheet = ss.getSheetByName('分條日報備注');
+  if (machineSheet) {
+    const md = machineSheet.getDataRange().getValues();
+    for (let i = 1; i < md.length; i++) {
+      const rawD = md[i][0];
+      const dStr = rawD instanceof Date
+        ? Utilities.formatDate(rawD, tz, 'yyyy/MM/dd')
+        : String(rawD || '').trim();
+      const cnt = Number(md[i][1]) || 0;
+      if (!dStr || !cnt) continue;
+      const p = dStr.split(/[\/\-]/);
+      if (p.length < 3) continue;
+      const my = Number(p[0]), mm = Number(p[1]), md2 = Number(p[2]);
+      if (my !== currentYear || mm !== currentMonth) continue;
+      machineCounts[`${String(mm).padStart(2,'0')}/${String(md2).padStart(2,'0')}`] = cnt;
+    }
+  }
+
+  return { monthly, daily, machineCounts, currentMonth, currentYear };
 }
