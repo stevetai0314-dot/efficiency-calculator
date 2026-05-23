@@ -1,196 +1,157 @@
 # 效率換算工具
 
-工廠員工班產效率換算紀錄系統，支援五個工作站。前端部署在 GitHub Pages，後端是 Google Apps Script，資料存在 Google Sheets。
+工廠各工作站效率報表系統，前端為 GAS Web App（Bootstrap 5），後端為 Google Apps Script，資料儲存於 Google Sheets。
 
 ---
 
-## 頁面網址
+## 重要 ID
 
-| 頁面 | URL |
-|---|---|
-| 分條填報 | https://stevetai0314-dot.github.io/efficiency-calculator/ |
-| 焊接填報 | https://stevetai0314-dot.github.io/efficiency-calculator/welding.html |
-| 褙膠填報 | https://stevetai0314-dot.github.io/efficiency-calculator/backing.html |
-| 切勾填報 | https://stevetai0314-dot.github.io/efficiency-calculator/cutting.html |
-| 裁切填報 | https://stevetai0314-dot.github.io/efficiency-calculator/process.html |
-| 報表總表 | https://stevetai0314-dot.github.io/efficiency-calculator/report.html |
-
----
-
-## 架構
-
-```
-GitHub Pages (HTML + JS)
-    ↕ JSONP GET          ← 抓員工清單、係數表、報表資料（繞 CORS）
-    ↕ fetch POST no-cors ← 存班產紀錄（不讀回傳）
-Google Apps Script (Code.gs)
-    ↕
-Google Sheets
-```
-
-**GAS 網址：**
-```
-https://script.google.com/macros/s/AKfycbyKEIcvpKEeTG2iOdyEkIP93ofx1oCl4qLvs3WPvYw930uV8UY--xzYYR8Bgi1cRcol/exec
-```
-
-**Spreadsheet ID：** `1mxgL9IR2uggzlIVRss0RDtb-3OX2ReUV0KpEFyrmm9k`
+| 項目 | 值 |
+|------|----|
+| Spreadsheet ID | `1mxgL9IR2uggzlIVRss0RDtb-3OX2ReUV0KpEFyrmm9k` |
+| GAS Script ID | `1aDAg10cVtRYyFx5Xef1lYJZraow_XC6fRltPEhZoLkfWfj04444JtTxB` |
+| Deployment ID | `AKfycbyKEIcvpKEeTG2iOdyEkIP93ofx1oCl4qLvs3WPvYw930uV8UY--xzYYR8Bgi1cRcol` |
+| GAS 執行網址 | `https://script.google.com/macros/s/AKfycbyKEIcvpKEeTG2iOdyEkIP93ofx1oCl4qLvs3WPvYw930uV8UY--xzYYR8Bgi1cRcol/exec` |
+| Timezone | `Asia/Ho_Chi_Minh` |
 
 ---
 
-## Google Sheets 結構
+## 換電腦開始工作
 
-| 分頁名稱 | 用途 | 說明 |
-|---|---|---|
-| `參數` | 員工清單 + 分條係數表 | C欄=工號, D欄=姓名；F欄起=規格係數表 |
-| `焊接係數` | 焊接係數設定 | A=項目, B=規格分類, C=係數, D=點數（點數欄已不使用，前端手動輸入） |
-| `褙膠係數` | 褙膠係數設定 | A=碼長, B=規格分類, C=係數 |
-| `裁切參數` | 裁切選單設定（手動維護） | A=工序, B=規格, C=碼長, D=顏色（各欄獨立，長度不需一樣） |
-| `分條記錄` | 分條班產紀錄（自動建立） | 見下方欄位說明 |
-| `焊接記錄` | 焊接班產紀錄（自動建立） | 見下方欄位說明 |
-| `褙膠記錄` | 褙膠班產紀錄（自動建立） | 見下方欄位說明 |
-| `切勾記錄` | 切勾班產紀錄（自動建立） | 見下方欄位說明 |
-| `裁切記錄` | 裁切班產紀錄（自動建立） | 見下方欄位說明 |
+### 1. 安裝 clasp（防火牆要走 npm mirror）
 
-### 分條記錄欄位
-
-| 生產日期 | 儲存時間 | 工號 | 員工姓名 | 上班時數 | 異常時數 | 生產異常帶時數 | 規格 | 碼長 | 捲數 | 係數 | 效率換算 | 異常原因 | 新人扣時% |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-
-### 焊接記錄欄位
-
-| 生產日期 | 儲存時間 | 工號 | 員工姓名 | 上班時數 | 異常時數 | 項目 | 規格分類 | 係數 | 點數 | 效率點數 | 異常原因 | 新人扣時% |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-
-### 褙膠記錄欄位
-
-| 生產日期 | 儲存時間 | 工號 | 員工姓名 | 上班時數 | 異常時數 | 碼長 | 規格分類 | 係數 | 卷數 | 效率換算 | 異常原因 | 新人扣時% |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-
-### 切勾記錄欄位
-
-| 生產日期 | 儲存時間 | 上班時數 | 異常時數 | 異常原因 | 部門人數 | 切勾數量 |
-|---|---|---|---|---|---|---|
-
-### 裁切記錄欄位
-
-| 生產日期 | 儲存時間 | 工號 | 員工姓名 | 工序 | 開始時間 | 結束時間 | 訂單號 | 客戶名稱 | 規格 | 顏色 | 碼長 | 捲數 | 片長 | 片數 | 條數 | 刀數 | 異常時數合計 | 異常原因 |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-
----
-
-## 各系統效率計算邏輯
-
-| 系統 | 計算方式 |
-|---|---|
-| 分條 | 捲數 × 係數（係數依規格 + 碼長查表） |
-| 焊接 | **人工輸入點數** × 係數（選項目 + 規格分類後自動帶係數，點數手動輸入） |
-| 褙膠 | 卷數 × 係數（碼長 + 規格分類查表） |
-| 切勾 | 直接記錄切勾數量（不計算效率，無員工欄位） |
-| 裁切 | 不在前端計算，效率公式由 Sheets 另行設定 |
-
----
-
-## 填報流程
-
-### 分條 / 焊接 / 褙膠
-
-```
-選生產日期 → 選員工 → 填工時/異常 → 逐行輸入產量 → 儲存
-焊接：選項目 → 選規格 → 自動帶係數 → 手動輸入點數 → Enter 跳下一行
+```powershell
+npm install -g @google/clasp --registry https://registry.npmmirror.com
 ```
 
-### 切勾
+### 2. 登入 Google
 
-```
-填日期 / 上班時數 / 異常時數 / 部門人數 / 切勾數量 → 儲存
-```
-
-### 裁切（process.html）
-
-```
-選生產日期 → 選員工（可先填品項再選員工，不會清除已填資料）
-    ↓
-新增異常時段（可多段，各填時數 + 原因）
-    ↓
-逐筆填寫品項（Enter 或「＋ 新增品項」按鈕）：
-  工序 / 開始時間 / 結束時間 / 訂單號 / 客戶名稱
-  投入：規格 / 顏色 / 碼長
-  產出：捲數 / 片長 / 片數 / 條數(預設1) / 刀數
-    ↓
-儲存紀錄 → 寫入 Sheets（每筆前端兩列 → Sheets 一列）
+```powershell
+clasp login
 ```
 
-**必填驗證**：儲存時自動檢查，缺少欄位會紅框標示並提示「第N筆缺：規格、片長…」
+### 3. 開啟 Apps Script API（每個 Google 帳號只需做一次）
 
-**自訂值警示**：規格/顏色/碼長若輸入不在 `裁切參數` 資料庫內的值，存入 Sheets 後可用條件式格式標黃（COUNTIF 公式自動判斷）
+前往 https://script.google.com/home/usersettings 把 **Google Apps Script API** 切換為開啟。
 
-**時間欄位輸入**：直接打數字即可，冒號自動補入。輸入 `1500` → 顯示 `15:00`。點選已有值的欄位會自動全選，直接打新時間覆蓋。
+### 4. 建立工作目錄
 
----
-
-## 裁切 Sheets 條件式格式設定
-
-在 `裁切記錄` 的 J/K/L 欄各設一條條件式格式規則：
-
+```powershell
+New-Item -ItemType Directory -Force "C:\tmp\gas"
 ```
-J欄（規格）：=COUNTIF(裁切參數!$B:$B, J2)=0  → 黃底
-K欄（顏色）：=COUNTIF(裁切參數!$D:$D, K2)=0  → 黃底
-L欄（碼長）：=COUNTIF(裁切參數!$C:$C, L2)=0  → 黃底
+
+從 GitHub 下載最新檔案：
+
+```powershell
+gh api "repos/stevetai0314-dot/efficiency-calculator/contents/Code.gs" --header "Accept: application/vnd.github.raw" | Out-File "C:\tmp\gas\Code.gs" -Encoding utf8
+gh api "repos/stevetai0314-dot/efficiency-calculator/contents/report.html" --header "Accept: application/vnd.github.raw" | Out-File "C:\tmp\gas\report.html" -Encoding utf8
+```
+
+### 5. 建立設定檔
+
+**`C:\tmp\gas\.clasp.json`**：
+
+```json
+{
+  "scriptId": "1aDAg10cVtRYyFx5Xef1lYJZraow_XC6fRltPEhZoLkfWfj04444JtTxB",
+  "rootDir": "C:\\tmp\\gas"
+}
+```
+
+**`C:\tmp\gas\appsscript.json`**：
+
+```json
+{
+  "timeZone": "Asia/Ho_Chi_Minh",
+  "dependencies": {},
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
+  "webapp": {
+    "executeAs": "USER_DEPLOYING",
+    "access": "ANYONE_ANONYMOUS"
+  }
+}
 ```
 
 ---
 
-## GAS 部署
+## 改完程式碼如何部署
 
-**每次修改 Code.gs 後需重新部署：**
+```powershell
+cd C:\tmp\gas
+clasp push --force; clasp deploy -i "AKfycbyKEIcvpKEeTG2iOdyEkIP93ofx1oCl4qLvs3WPvYw930uV8UY--xzYYR8Bgi1cRcol"
+```
 
-1. 開 Google Sheet → 擴充功能 → Apps Script
-2. 貼上最新 Code.gs 全部內容 → Ctrl+S
-3. 右上角「部署」→「管理部署」→ 選現有部署 → 編輯 → 版本選「建立新版本」→「部署」
+改完後也記得 push 到 GitHub：
 
-**部署設定：**
-- 執行身份：我（擁有者）
-- 存取權限：所有人（包含匿名）
-
----
-
-## 前端設定
-
-| 常數 | 位置 | 說明 |
-|---|---|---|
-| `GAS_URL` | 各 HTML 頂部 | GAS 部署網址（部署 ID 更換時需同步改） |
-
-**係數資料來源：動態從 GAS 載入**（不寫死在 HTML）。員工清單、係數表每次開頁面重新抓取。
+```powershell
+gh api repos/stevetai0314-dot/efficiency-calculator/contents/Code.gs ...（略）
+```
 
 ---
 
-## 報表總表
+## 檔案說明
 
-`report.html` 三個 Tab（分條 / 焊接 / 褙膠），各 Tab 顯示：
-- **年度月報長條圖**（Chart.js 4.x），當月柱子顏色加深
-- **當月日報表格**：每日效率合計 + 出勤人數
-
-資料來源：GAS `?action=getReport&system=slitting|welding|backing`，時區 `Asia/Ho_Chi_Minh`（越南）。
-
----
-
-## 設計決策
-
-- **去正規化儲存**：工時欄位每員工填一次，存入時每筆產量行都帶入，方便 Sheets SUMIF / 樞紐分析直接用
-- **時間戳 GAS 生成**：用 `Utilities.formatDate(new Date(), 'Asia/Taipei', ...)` 確保時區可控
-- **POST 無回傳確認**：no-cors 模式無法讀回應，前端樂觀顯示成功，約 3 秒後實際寫入
-- **新欄位加在末尾**：避免改動 GAS getReport 的欄位索引
-- **係數 0 視為空值**：部分規格特定碼長無係數，GAS 存 0，前端顯示「—」
-- **焊接點數手動輸入**：係數表 D 欄（點數）保留但前端不使用，點數改由使用者當天實際輸入
-- **裁切前端兩列 → Sheets 一列**：欄位多用兩列顯示方便操作，送出合併成一筆存入
-- **裁切時間欄位 `input` + `setSelectionRange`**：用 `input` 事件重新格式化並強制 cursor 推末，確保任何鍵盤/輸入法下打數字都能自動補冒號，避免 cursor 位置導致重複字元的問題
-- **裁切工序欄位 220px**：加寬以容納越南文工序名稱
-- **選員工不清除已填品項**：`selectEmp` 改為只在無任何 block 時才新增空列，允許先填品項再補選員工
+| 檔案 | 說明 |
+|------|------|
+| `Code.gs` | GAS 後端。doGet 分派、讀取 Sheets、計算效率回傳 JSON |
+| `report.html` | 效率報表前端，Bootstrap 5 + JSONP 呼叫 |
 
 ---
 
-## Git / GitHub
+## Sheets 結構
 
-- Repo：`stevetai0314-dot/efficiency-calculator`（Public）
-- Branch：`master`（GitHub Pages 來源）
-- 主題：Bootswatch Flatly（Bootstrap 5）
+### 參數類
+
+| 分頁 | 用途 |
+|------|------|
+| `參數` | 員工清單（C=工號, D=姓名）、分條規格係數表（F欄起） |
+| `焊接係數` | A=項目, B=規格, C=係數, D=點數 |
+| `褙膠係數` | A=碼長, B=規格, C=係數 |
+| `裁切參數` | A=工序, B=規格, C=碼長, D=顏色 |
+| `開機台數備註` | A=日期, B=分條機台數, C=褙膠機台數, D=焊接機台數 |
+
+### 記錄類
+
+| 分頁 | 關鍵欄位 |
+|------|---------|
+| `分條記錄` | col 2=工號, 4=上班時數, 5=異常時數, 6=生產異常帶時數, 9=捲數, 11=效率換算 |
+| `焊接記錄` | col 2=工號, 4=上班時數, 5=異常時數, 10=效率換算 |
+| `褙膠記錄` | col 2=工號, 4=上班時數, 13=效率卷數(N), 14=加權工時(O) |
+| `切勾記錄` | col 2=上班時數, 3=異常時數, 5=部門人數, 6=切勾數量 |
+| `裁切記錄` | 多欄，含工序/規格/捲數/片長等 |
+
+### 月報匯總類（歷史資料）
+
+| 分頁 | 欄位格式 | 說明 |
+|------|---------|------|
+| `分條月報匯總` | A=年, B=月, C=捲數, D=效率捲數, E=加權工時 | 2026 年以前的月份 |
+| `褙膠月報匯總` | A=年, B=月, C=卷數, D=效率卷數, E=加權工時 | 2026 年以前的月份 |
+| `焊接月報匯總` | A=年, B=月, C=效率換算, D=加權工時 | 2026 年以前的月份 |
+
+---
+
+## 效率計算公式
+
+| 工作站 | 效率公式 | 目標 | P（加權工時）計算 |
+|--------|---------|------|-----------------|
+| 分條 | O ÷ P ÷ 6.3 | 6.3 捲／時 | 上班時數 − 異常時數 − 生產異常帶時數 × 0.2，per empId+日期去重 |
+| 褙膠 | N ÷ O ÷ 55 | 55 卷／時 | 直接讀褙膠記錄 col 14（O），per empId+日期去重 |
+| 焊接 | C ÷ P ÷ 目標 | **TBD** | 上班時數 − 異常時數，per empId+日期去重 |
+
+### 假日判斷邏輯（前端）
+
+- 有資料 → 正常顯示
+- 無資料 + 禮拜天 → 紅底（假日）
+- 無資料 + 今天之前的工作日 → 紅底（假日）
+- 今天或未來無資料 → 灰色（—）
+
+---
+
+## 待辦
+
+- [ ] 焊接效率目標（TBD）確認後改 `report.html` 裡的 `const TARGET_WELD = 0`
+- [ ] 焊接月報匯總 Sheet 建立並填入歷史資料
+- [ ] 開機台數備註 加 D 欄（焊接機台數）
+- [ ] 裁切效率報表（是否需要？）
+- [ ] 切勾效率報表（是否需要？）
