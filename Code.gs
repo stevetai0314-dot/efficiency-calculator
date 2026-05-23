@@ -1,4 +1,4 @@
-const SS_ID = '1mxgL9IR2uggzlIVRss0RDtb-3OX2ReUV0KpEFyrmm9k';
+﻿const SS_ID = '1mxgL9IR2uggzlIVRss0RDtb-3OX2ReUV0KpEFyrmm9k';
 
 function doGet(e) {
   const action   = e.parameter.action   || '';
@@ -19,6 +19,9 @@ function doGet(e) {
   }
   if (action === 'getBackingReport') {
     return jsonp_(callback, getBackingReport_());
+  }
+  if (action === 'getWeldingReport') {
+    return jsonp_(callback, getWeldingReport_());
   }
   return HtmlService.createHtmlOutputFromFile('index')
     .setTitle('效率換算工具')
@@ -442,6 +445,138 @@ function getSlittingReport_() {
         ? Utilities.formatDate(rawD, tz, 'yyyy/MM/dd')
         : String(rawD || '').trim();
       const cnt = Number(md[i][1]) || 0;
+      if (!dStr || !cnt) continue;
+      const p = dStr.split(/[\/\-]/);
+      if (p.length < 3) continue;
+      const my = Number(p[0]), mm = Number(p[1]), md2 = Number(p[2]);
+      if (my !== currentYear || mm !== currentMonth) continue;
+      machineCounts[`${String(mm).padStart(2,'0')}/${String(md2).padStart(2,'0')}`] = cnt;
+    }
+  }
+
+  return { monthly, daily, machineCounts, currentMonth, currentYear };
+}
+
+// ── 焊接詳細報表（月報 + 日報）────────────────────────────────────────────────
+
+function getWeldingReport_() {
+  const ss = SpreadsheetApp.openById(SS_ID);
+  const tz = 'Asia/Ho_Chi_Minh';
+  const now = new Date();
+  const currentYear  = Number(Utilities.formatDate(now, tz, 'yyyy'));
+  const currentMonth = Number(Utilities.formatDate(now, tz, 'MM'));
+
+  // 歷史月報匯總（A=年, B=月, C=效率換算, D=加權工時）
+  const histMap = {};
+  const histSheet = ss.getSheetByName('焊接月報匯總');
+  if (histSheet) {
+    const hd = histSheet.getDataRange().getValues();
+    for (let i = 1; i < hd.length; i++) {
+      const y = Number(hd[i][0]), m = Number(hd[i][1]);
+      if (!y || !m) continue;
+      histMap[`${y}-${m}`] = {
+        effScore: Number(hd[i][2]) || 0,
+        weightedHours: Number(hd[i][3]) || 0
+      };
+    }
+  }
+
+  // 焊接記錄：col 2=工號, col 4=上班時數, col 5=異常時數, col 10=效率換算
+  const monthlyDet = {};
+  const dailyDet   = {};
+
+  const recSheet = ss.getSheetByName('焊接記錄');
+  if (recSheet) {
+    const rows = recSheet.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      const rawDate  = rows[i][0];
+      const dateStr  = rawDate instanceof Date
+        ? Utilities.formatDate(rawDate, tz, 'yyyy/MM/dd')
+        : String(rawDate || '').trim();
+      const empId    = String(rows[i][2] || '').trim();
+      const workH    = Number(rows[i][4]) || 0;
+      const abnH     = Number(rows[i][5]) || 0;
+      const effScore = Number(rows[i][10]) || 0;
+
+      if (!dateStr || !workH) continue;
+
+      const parts = dateStr.split(/[\/\-]/);
+      if (parts.length < 3) continue;
+      const year  = Number(parts[0]);
+      const month = Number(parts[1]);
+      const day   = Number(parts[2]);
+      if (year !== currentYear) continue;
+
+      const P         = workH - abnH;
+      const empDayKey = `${empId}|${dateStr}`;
+
+      if (!monthlyDet[month]) monthlyDet[month] = { effScore: 0, weightedHours: 0, empDays: {} };
+      if (!monthlyDet[month].empDays[empDayKey]) {
+        monthlyDet[month].empDays[empDayKey] = true;
+        monthlyDet[month].weightedHours += P;
+      }
+      monthlyDet[month].effScore += effScore;
+
+      if (month === currentMonth) {
+        const dayKey = `${String(month).padStart(2,'0')}/${String(day).padStart(2,'0')}`;
+        if (!dailyDet[dayKey]) dailyDet[dayKey] = { effScore: 0, weightedHours: 0, empSet: {} };
+        if (!dailyDet[dayKey].empSet[empId]) {
+          dailyDet[dayKey].empSet[empId] = true;
+          dailyDet[dayKey].weightedHours += P;
+        }
+        dailyDet[dayKey].effScore += effScore;
+      }
+    }
+  }
+
+  // 建立月報陣列
+  const monthly = [];
+  for (let m = 1; m <= currentMonth; m++) {
+    const det = monthlyDet[m];
+    if (det) {
+      monthly.push({
+        month: m,
+        effScore: Math.round(det.effScore * 100) / 100,
+        weightedHours: Math.round(det.weightedHours * 100) / 100,
+        hasData: true, isHistorical: false
+      });
+    } else {
+      const hist = histMap[`${currentYear}-${m}`];
+      if (hist && (hist.effScore || hist.weightedHours)) {
+        monthly.push({
+          month: m,
+          effScore: Math.round(hist.effScore * 100) / 100,
+          weightedHours: Math.round(hist.weightedHours * 100) / 100,
+          hasData: true, isHistorical: true
+        });
+      } else {
+        monthly.push({ month: m, hasData: false, isHistorical: false });
+      }
+    }
+  }
+
+  // 建立日報陣列
+  const daily = Object.keys(dailyDet).map(dayKey => {
+    const dd = dailyDet[dayKey];
+    return {
+      date: dayKey,
+      day: Number(dayKey.split('/')[1]),
+      effScore: Math.round(dd.effScore * 100) / 100,
+      weightedHours: Math.round(dd.weightedHours * 100) / 100
+    };
+  }).sort((a, b) => a.day - b.day);
+
+  // 機台數量（開機台數備註 D欄，index 3）
+  const machineCounts = {};
+  const machineSheet = ss.getSheetByName('開機台數備註');
+  if (machineSheet) {
+    const md = machineSheet.getDataRange().getValues();
+    for (let i = 1; i < md.length; i++) {
+      const rawD = md[i][0];
+      const dStr = rawD instanceof Date
+        ? Utilities.formatDate(rawD, tz, 'yyyy/MM/dd')
+        : String(rawD || '').trim();
+      const cnt = Number(md[i][3]) || 0;
       if (!dStr || !cnt) continue;
       const p = dStr.split(/[\/\-]/);
       if (p.length < 3) continue;
