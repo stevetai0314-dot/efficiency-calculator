@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>效率報表總表</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.8/dist/flatly/bootstrap.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <style>
     /* welding / backing chart tabs */
     .chart-wrap { position: relative; height: 200px; }
@@ -47,8 +46,9 @@
         <a class="nav-link" href="index.html">分條填報</a>
         <a class="nav-link" href="welding.html">焊接填報</a>
         <a class="nav-link" href="backing.html">褙膠填報</a>
-        <a class="nav-link" href="process.html">裁切填報</a>
         <a class="nav-link" href="cutting.html">切勾填報</a>
+        <a class="nav-link" href="process.html">裁切填報</a>
+        <a class="nav-link active" href="report.html">報表總表</a>
         <a class="nav-link text-success fw-semibold" href="https://docs.google.com/spreadsheets/d/1mxgL9IR2uggzlIVRss0RDtb-3OX2ReUV0KpEFyrmm9k/edit" target="_blank">📊 Sheet</a>
       </div>
     </div>
@@ -67,6 +67,12 @@
     </li>
     <li class="nav-item">
       <button class="nav-link" onclick="switchTab('backing', this)">自黏褙膠</button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" onclick="switchTab('cutting', this)">切勾</button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" onclick="switchTab('process', this)">裁片</button>
     </li>
   </ul>
 
@@ -256,6 +262,95 @@
 
   </div>
 
+  <!-- ── 切勾 Tab ── -->
+  <div id="tab-cutting" style="display:none">
+
+    <div class="d-flex align-items-center mb-2 gap-3 flex-wrap">
+      <h6 class="mb-0 fw-bold" id="cutting-year-label">載入中…</h6>
+    </div>
+
+    <!-- 月報表 -->
+    <div class="table-responsive mb-1">
+    <table class="table table-sm table-bordered align-middle mb-0">
+      <thead class="table-dark text-center">
+        <tr>
+          <th style="width:80px">月份</th>
+          <th>月總數量</th>
+        </tr>
+      </thead>
+      <tbody id="cutting-monthly-body">
+        <tr><td colspan="2" class="text-center text-muted py-3">載入中…</td></tr>
+      </tbody>
+      <tfoot id="cutting-monthly-foot"></tfoot>
+    </table>
+    </div>
+
+    <!-- 日報標題 -->
+    <div class="small text-muted mt-3 mb-1" id="cutting-daily-title">▼ 日報</div>
+
+    <!-- 日報表 -->
+    <div class="table-responsive">
+    <table class="table table-sm table-bordered align-middle mb-0">
+      <thead class="table-primary text-center">
+        <tr>
+          <th style="width:80px">日期</th>
+          <th>日數量</th>
+        </tr>
+      </thead>
+      <tbody id="cutting-daily-body">
+        <tr><td colspan="2" class="text-center text-muted py-3">載入中…</td></tr>
+      </tbody>
+      <tfoot id="cutting-daily-foot"></tfoot>
+    </table>
+    </div>
+
+  </div><!-- /tab-cutting -->
+
+  <!-- ── 裁片 Tab ── -->
+  <div id="tab-process" style="display:none">
+
+    <div class="d-flex align-items-center mb-2 gap-3 flex-wrap">
+      <h6 class="mb-0 fw-bold" id="process-year-label">載入中…</h6>
+    </div>
+
+    <!-- 月報表 -->
+    <div class="table-responsive mb-1">
+    <table class="table table-sm table-bordered align-middle mb-0">
+      <thead class="table-dark text-center">
+        <tr>
+          <th style="width:80px">月份</th>
+          <th>總上班時數</th>
+          <th>總生產時數</th>
+          <th>工時利用率</th>
+        </tr>
+      </thead>
+      <tbody id="process-monthly-body">
+        <tr><td colspan="4" class="text-center text-muted py-3">載入中…</td></tr>
+      </tbody>
+      <tfoot id="process-monthly-foot"></tfoot>
+    </table>
+    </div>
+
+    <!-- 日報標題 -->
+    <div class="small text-muted mt-3 mb-1" id="process-daily-title">▼ 日報</div>
+
+    <!-- 日報表 -->
+    <div class="table-responsive">
+    <table class="table table-sm table-bordered align-middle mb-0">
+      <thead class="table-primary text-center">
+        <tr>
+          <th style="width:80px">日期</th>
+          <th>當日利用率</th>
+        </tr>
+      </thead>
+      <tbody id="process-daily-body">
+        <tr><td colspan="2" class="text-center text-muted py-3">載入中…</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+  </div><!-- /tab-process -->
+
 </div><!-- /container-fluid -->
 
 <script>
@@ -263,18 +358,17 @@ const GAS_URL     = 'https://script.google.com/macros/s/AKfycbyKEIcvpKEeTG2iOdyE
 const MONTH_NAMES = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
 const TARGET_SLIT = 6.3;
 const TARGET_BACK = 55;
-const TARGET_WELD = 0; // TBD — 設定後填入數字即可啟用顏色
+const TARGET_WELD = 545;
 
 const charts = {};
 
 // ── Tab 切換 ──────────────────────────────────────────────────────────────────
 function switchTab(system, btn) {
-  ['slitting','welding','backing'].forEach(s => {
+  ['slitting','welding','backing','cutting','process'].forEach(s => {
     document.getElementById(`tab-${s}`).style.display = s === system ? '' : 'none';
   });
   document.querySelectorAll('#reportTabs .nav-link').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  if (charts[system]) setTimeout(() => charts[system].resize(), 50);
 }
 
 // ── 分條報表 ─────────────────────────────────────────────────────────────────
@@ -771,10 +865,103 @@ function jsonpCall(url, cb) {
   document.head.appendChild(s);
 }
 
+// ── 切勾報表 ─────────────────────────────────────────────────────────────────
+function loadCuttingReport() {
+  jsonpCall(GAS_URL + '?action=getCuttingReport', renderCuttingReport);
+}
+
+function renderCuttingReport(data) {
+  const { monthly, daily, currentMonthTotal } = data;
+  const now = new Date();
+  const currentYear  = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+
+  document.getElementById('cutting-year-label').textContent = `${currentYear} 年切勾數量月報`;
+  document.getElementById('cutting-daily-title').textContent =
+    `▼ ${currentYear}年 ${currentMonth}月 日報`;
+
+  if (!monthly.length) {
+    document.getElementById('cutting-monthly-body').innerHTML =
+      '<tr><td colspan="2" class="text-center text-muted py-3">尚無資料</td></tr>';
+  } else {
+    document.getElementById('cutting-monthly-body').innerHTML = monthly.map(m =>
+      `<tr class="text-center">
+        <td class="fw-semibold">${m.month}</td>
+        <td class="text-end">${m.totalCount.toLocaleString()}</td>
+      </tr>`
+    ).join('');
+    const total = monthly.reduce((s, m) => s + m.totalCount, 0);
+    document.getElementById('cutting-monthly-foot').innerHTML =
+      `<tr class="text-center"><td>年度累計</td><td class="text-end">${total.toLocaleString()}</td></tr>`;
+  }
+
+  if (!daily.length) {
+    document.getElementById('cutting-daily-body').innerHTML =
+      '<tr><td colspan="2" class="text-center text-muted py-3">本月尚無資料</td></tr>';
+  } else {
+    document.getElementById('cutting-daily-body').innerHTML = daily.map(d =>
+      `<tr class="text-center">
+        <td class="fw-semibold">${d.date.slice(5)}</td>
+        <td class="text-end">${d.count.toLocaleString()}</td>
+      </tr>`
+    ).join('');
+    document.getElementById('cutting-daily-foot').innerHTML =
+      `<tr class="text-center"><td>月合計</td><td class="text-end">${currentMonthTotal.toLocaleString()}</td></tr>`;
+  }
+}
+
+// ── 裁片報表 ─────────────────────────────────────────────────────────────────
+function loadProcessReport() {
+  jsonpCall(GAS_URL + '?action=getProcessReport', renderProcessReport);
+}
+
+function renderProcessReport(data) {
+  const { monthly, daily } = data;
+  const now = new Date();
+  const currentYear  = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+
+  document.getElementById('process-year-label').textContent = `${currentYear} 年裁片工時利用率月報`;
+  document.getElementById('process-daily-title').textContent =
+    `▼ ${currentYear}年 ${currentMonth}月 日報`;
+
+  function utilCls(u) {
+    return u >= 100 ? 'eff-high' : u >= 90 ? 'eff-mid' : 'eff-low';
+  }
+
+  if (!monthly.length) {
+    document.getElementById('process-monthly-body').innerHTML =
+      '<tr><td colspan="4" class="text-center text-muted py-3">尚無資料</td></tr>';
+  } else {
+    document.getElementById('process-monthly-body').innerHTML = monthly.map(m =>
+      `<tr class="text-center">
+        <td class="fw-semibold">${m.month}</td>
+        <td class="text-end">${fmt2(m.totalWorkHours)}</td>
+        <td class="text-end">${fmt2(m.totalProdHours)}</td>
+        <td class="${utilCls(m.utilization)}">${m.utilization.toFixed(1)}%</td>
+      </tr>`
+    ).join('');
+  }
+
+  if (!daily.length) {
+    document.getElementById('process-daily-body').innerHTML =
+      '<tr><td colspan="2" class="text-center text-muted py-3">本月尚無資料</td></tr>';
+  } else {
+    document.getElementById('process-daily-body').innerHTML = daily.map(d =>
+      `<tr class="text-center">
+        <td class="fw-semibold">${d.date.slice(5)}</td>
+        <td class="${utilCls(d.utilization)}">${d.utilization.toFixed(1)}%</td>
+      </tr>`
+    ).join('');
+  }
+}
+
 // ── 啟動 ──────────────────────────────────────────────────────────────────────
 loadSlittingReport();
 loadWeldingReport();
 loadBackingReport();
+loadCuttingReport();
+loadProcessReport();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 </body>
