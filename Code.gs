@@ -615,7 +615,10 @@ function getProcessReport_() {
   const daily   = {};
 
   for (let i = 1; i < data.length; i++) {
-    const dateStr  = String(data[i][0] || '').trim();
+    const rawDate  = data[i][0];
+    const dateStr  = rawDate instanceof Date
+      ? Utilities.formatDate(rawDate, tz, 'yyyy/MM/dd')
+      : String(rawDate || '').trim();
     const effHours = Number(data[i][23]) || 0;
     const cutHours = Number(data[i][25]) || 0;
     if (!dateStr) continue;
