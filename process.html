@@ -91,6 +91,10 @@
           <input type="text" id="emp-input" class="form-control form-control-sm" placeholder="輸入工號或姓名…" autocomplete="off">
           <div class="ac-dropdown" id="emp-ac"></div>
         </div>
+        <div class="col-auto">
+          <label class="form-label small mb-1">上班時數</label>
+          <input type="number" id="work-hours" class="form-control form-control-sm text-end" min="0" step="0.5" placeholder="8" style="width:80px">
+        </div>
         <div class="col">
           <span id="header-hint" class="text-muted small">請先選擇日期與員工</span>
         </div>
@@ -472,12 +476,14 @@ function onSave() {
   const date = document.getElementById('prod-date').value;
   const validBlocks = getBlocks().filter(r => r.process);
 
-  const abn = getAbnData();
+  const abn       = getAbnData();
+  const workHours = parseFloat(document.getElementById('work-hours').value) || 0;
   const btn = document.getElementById('btn-save');
   btn.disabled = true; btn.textContent = '儲存中…';
 
   const records = validBlocks.map(r => ({
     empId: currentEmp.id, empName: currentEmp.name,
+    workHours,
     ...r,
     abnormalHoursTotal: abn.total,
     abnormalReason: abn.reason,
@@ -491,6 +497,7 @@ function onSave() {
   showMsg(`已送出 ${validBlocks.length} 筆（約 3 秒後寫入 Sheets）`, 'success');
   clearRows();
   document.getElementById('emp-input').value = '';
+  document.getElementById('work-hours').value = '';
   document.getElementById('abn-rows').innerHTML = '';
   abnId = 0;
   currentEmp = null;
