@@ -5,23 +5,16 @@ function doGet(e) {
   const callback = e.parameter.callback || '';
   const system   = e.parameter.system   || 'slitting';
 
-  if (action === 'getEmployees') {
-    return jsonp_(callback, getEmployees_());
-  }
-  if (action === 'getSpecs') {
-    return jsonp_(callback, getSpecs_(system));
-  }
-  if (action === 'getReport') {
-    return jsonp_(callback, getReport_(system));
-  }
-  if (action === 'getCuttingReport') {
-    return jsonp_(callback, getCuttingReport_());
-  }
-  if (action === 'getProcessReport') {
-    return jsonp_(callback, getProcessReport_());
-  }
-  return HtmlService.createHtmlOutputFromFile('index')
-    .setTitle('效率換算工具')
+  if (action === 'getEmployees')     return jsonp_(callback, getEmployees_());
+  if (action === 'getSpecs')         return jsonp_(callback, getSpecs_(system));
+  if (action === 'getSlittingReport') return jsonp_(callback, getSlittingReport_());
+  if (action === 'getBackingReport') return jsonp_(callback, getBackingReport_());
+  if (action === 'getWeldingReport') return jsonp_(callback, getWeldingReport_());
+  if (action === 'getCuttingReport') return jsonp_(callback, getCuttingReport_());
+  if (action === 'getProcessReport') return jsonp_(callback, getProcessReport_());
+
+  return HtmlService.createHtmlOutputFromFile('report')
+    .setTitle('效率報表總表')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -65,42 +58,30 @@ function getEmployees_() {
 function getSpecs_(system) {
   const ss = SpreadsheetApp.openById(SS_ID);
 
-  // 分條：從「參數」分頁 F 欄起讀取規格係數表
-  // 表頭列：F=規格, G=條數, H~=各碼長係數
   if (system === 'slitting') {
     const sheet = ss.getSheetByName('參數');
     const data  = sheet.getDataRange().getValues();
-
-    // 尋找表頭列（F欄值為「規格」的那列）
     let headerRow = -1;
     for (let i = 0; i < data.length; i++) {
       if (String(data[i][5]).trim() === '規格') { headerRow = i; break; }
     }
     if (headerRow === -1) return { specs: {}, lengths: [] };
-
-    // H 欄（index 7）起為各碼長欄位名稱
     const lengths = [];
     for (let c = 7; c < data[headerRow].length; c++) {
       const h = String(data[headerRow][c]).trim().replace(/\n/g, ' ');
       if (h) lengths.push(h);
     }
-
     const specs = {};
     for (let i = headerRow + 1; i < data.length; i++) {
       const name = String(data[i][5] || '').trim();
       if (!name) continue;
       const strands      = Number(data[i][6]) || 0;
-      const coefficients = lengths.map((_, ci) => {
-        const v = Number(data[i][7 + ci]) || 0;
-        return Math.round(v * 10000) / 10000;
-      });
+      const coefficients = lengths.map((_, ci) => Math.round((Number(data[i][7 + ci]) || 0) * 10000) / 10000);
       specs[name] = { strands, coefficients };
     }
     return { specs, lengths };
   }
 
-  // 焊接：從「焊接係數」分頁讀取
-  // 表頭：A=項目, B=規格分類, C=係數, D=點數
   if (system === 'welding') {
     const sheet = ss.getSheetByName('焊接係數');
     const data  = sheet.getDataRange().getValues();
@@ -117,8 +98,6 @@ function getSpecs_(system) {
     return { items };
   }
 
-  // 褙膠：從「褙膠係數」分頁讀取
-  // 表頭：A=碼長, B=規格分類, C=係數
   if (system === 'backing') {
     const sheet = ss.getSheetByName('褙膠係數');
     const data  = sheet.getDataRange().getValues();
@@ -171,8 +150,7 @@ function saveRecords_(records, date, system) {
   }
 
   if (rows.length > 0) {
-    sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, rows[0].length)
-         .setValues(rows);
+    sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
   }
 }
 
@@ -184,85 +162,394 @@ function getOrCreateSheet_(name, system) {
     let headers;
     if (system === 'welding') {
       headers = ['生產日期','儲存時間','工號','員工姓名','上班時數','異常時數',
-                 '項目','規格分類','係數','點數','效率換算',
-                 '異常原因','新人扣時%'];
+                 '項目','規格分類','係數','點數','效率換算','異常原因','新人扣時%'];
     } else if (system === 'backing') {
       headers = ['生產日期','儲存時間','工號','員工姓名','上班時數','異常時數',
-                 '碼長','規格分類','係數','卷數','效率換算',
-                 '異常原因','新人扣時%'];
+                 '碼長','規格分類','係數','卷數','效率換算','異常原因','新人扣時%'];
     } else {
       headers = ['生產日期','儲存時間','工號','員工姓名','上班時數','異常時數',
-                 '生產異常帶時數','規格','碼長','捲數','係數','效率換算',
-                 '異常原因','新人扣時%'];
+                 '生產異常帶時數','規格','碼長','捲數','係數','效率換算','異常原因','新人扣時%'];
     }
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
     sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+    sheet.getRange('C:C').setNumberFormat('@');
   }
   return sheet;
 }
 
-// ── 報表資料 ──────────────────────────────────────────────────────────────────
+// ── 分條詳細報表（月報 + 日報）────────────────────────────────────────────────
 
-function getReport_(system) {
-  const sheetName = system === 'welding' ? '焊接記錄'
-                  : system === 'backing' ? '褙膠記錄'
-                  : '分條記錄';
-  const ss    = SpreadsheetApp.openById(SS_ID);
-  const sheet = ss.getSheetByName(sheetName);
-  if (!sheet) return { monthly: [], daily: [], currentMonth: 0, currentYear: 0 };
-
-  const tz           = 'Asia/Ho_Chi_Minh';
-  const now          = new Date();
+function getSlittingReport_() {
+  const ss = SpreadsheetApp.openById(SS_ID);
+  const tz = 'Asia/Ho_Chi_Minh';
+  const now = new Date();
   const currentYear  = Number(Utilities.formatDate(now, tz, 'yyyy'));
   const currentMonth = Number(Utilities.formatDate(now, tz, 'MM'));
 
-  // 效率欄位索引（0-based）：分條=11（12欄），焊接/褙膠=10（11欄）
-  const effIdx = system === 'slitting' ? 11 : 10;
-
-  const data    = sheet.getDataRange().getValues();
-  const monthly = {};
-  const daily   = {};
-
-  for (let i = 1; i < data.length; i++) {
-    const dateStr = String(data[i][0] || '').trim();
-    const empId   = String(data[i][2] || '').trim();
-    const eff     = Number(data[i][effIdx]) || 0;
-    if (!dateStr || eff === 0) continue;
-
-    // 日期格式：yyyy/MM/dd 或 yyyy-MM-dd
-    const parts = dateStr.split(/[\/\-]/);
-    if (parts.length < 3) continue;
-    const year  = Number(parts[0]);
-    const month = Number(parts[1]);
-    const day   = Number(parts[2]);
-    if (year !== currentYear) continue;
-
-    // 月合計
-    if (!monthly[month]) monthly[month] = 0;
-    monthly[month] += eff;
-
-    // 當月日合計
-    if (month === currentMonth) {
-      const key = `${String(month).padStart(2,'0')}/${String(day).padStart(2,'0')}`;
-      if (!daily[key]) daily[key] = { total: 0, empSet: [] };
-      daily[key].total += eff;
-      if (!daily[key].empSet.includes(empId)) daily[key].empSet.push(empId);
+  // 歷史月報匯總（A=年, B=月, C=捲數, D=效率捲數, E=加權工時）
+  const histMap = {};
+  const histSheet = ss.getSheetByName('分條月報匯總');
+  if (histSheet) {
+    const hd = histSheet.getDataRange().getValues();
+    for (let i = 1; i < hd.length; i++) {
+      const y = Number(hd[i][0]), m = Number(hd[i][1]);
+      if (!y || !m) continue;
+      histMap[`${y}-${m}`] = {
+        rolls: Number(hd[i][2]) || 0,
+        effRolls: Number(hd[i][3]) || 0,
+        weightedHours: Number(hd[i][4]) || 0
+      };
     }
   }
 
-  const monthlyArr = Object.keys(monthly)
-    .map(m => ({ month: Number(m), total: Math.round(monthly[m] * 100) / 100 }))
-    .sort((a, b) => a.month - b.month);
+  // 分條記錄
+  // col 0=生產日期, 2=工號, 4=上班時數, 5=異常時數, 6=生產異常帶時數, 9=捲數, 11=效率換算
+  const monthlyDet = {};
+  const dailyDet   = {};
 
-  const dailyArr = Object.keys(daily)
-    .map(d => ({
-      date:      d,
-      total:     Math.round(daily[d].total * 100) / 100,
-      headcount: daily[d].empSet.length
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const recSheet = ss.getSheetByName('分條記錄');
+  if (recSheet) {
+    const rows = recSheet.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      const rawDate  = rows[i][0];
+      const dateStr  = rawDate instanceof Date
+        ? Utilities.formatDate(rawDate, tz, 'yyyy/MM/dd')
+        : String(rawDate || '').trim();
+      const empId    = String(rows[i][2] || '').trim();
+      const workH    = Number(rows[i][4]) || 0;
+      const abnH     = Number(rows[i][5]) || 0;
+      const prodAbnH = Number(rows[i][6]) || 0;
+      const rolls    = Number(rows[i][9]) || 0;
+      const effRolls = Number(rows[i][11]) || 0;
 
-  return { monthly: monthlyArr, daily: dailyArr, currentMonth, currentYear };
+      if (!dateStr || !workH) continue;
+
+      const parts = dateStr.split(/[\/\-]/);
+      if (parts.length < 3) continue;
+      const year  = Number(parts[0]);
+      const month = Number(parts[1]);
+      const day   = Number(parts[2]);
+      if (year !== currentYear) continue;
+
+      const P         = workH - abnH - prodAbnH * 0.2;
+      const empDayKey = `${empId}|${dateStr}`;
+
+      if (!monthlyDet[month]) monthlyDet[month] = { rolls: 0, effRolls: 0, weightedHours: 0, empDays: {} };
+      if (!monthlyDet[month].empDays[empDayKey]) {
+        monthlyDet[month].empDays[empDayKey] = true;
+        monthlyDet[month].weightedHours += P;
+      }
+      monthlyDet[month].rolls    += rolls;
+      monthlyDet[month].effRolls += effRolls;
+
+      if (month === currentMonth) {
+        const dayKey = `${String(month).padStart(2,'0')}/${String(day).padStart(2,'0')}`;
+        if (!dailyDet[dayKey]) dailyDet[dayKey] = { rolls: 0, effRolls: 0, weightedHours: 0, empSet: {} };
+        if (!dailyDet[dayKey].empSet[empId]) {
+          dailyDet[dayKey].empSet[empId] = true;
+          dailyDet[dayKey].weightedHours += P;
+        }
+        dailyDet[dayKey].rolls    += rolls;
+        dailyDet[dayKey].effRolls += effRolls;
+      }
+    }
+  }
+
+  const monthly = [];
+  for (let m = 1; m <= currentMonth; m++) {
+    const det = monthlyDet[m];
+    if (det) {
+      monthly.push({ month: m, rolls: Math.round(det.rolls * 10) / 10,
+        effRolls: Math.round(det.effRolls * 100) / 100,
+        weightedHours: Math.round(det.weightedHours * 100) / 100,
+        hasData: true, isHistorical: false });
+    } else {
+      const hist = histMap[`${currentYear}-${m}`];
+      if (hist && (hist.rolls || hist.effRolls || hist.weightedHours)) {
+        monthly.push({ month: m, rolls: Math.round(hist.rolls * 10) / 10,
+          effRolls: Math.round(hist.effRolls * 100) / 100,
+          weightedHours: Math.round(hist.weightedHours * 100) / 100,
+          hasData: true, isHistorical: true });
+      } else {
+        monthly.push({ month: m, hasData: false, isHistorical: false });
+      }
+    }
+  }
+
+  const daily = Object.keys(dailyDet).map(dayKey => {
+    const dd = dailyDet[dayKey];
+    return { date: dayKey, day: Number(dayKey.split('/')[1]),
+      rolls: Math.round(dd.rolls * 10) / 10,
+      effRolls: Math.round(dd.effRolls * 100) / 100,
+      weightedHours: Math.round(dd.weightedHours * 100) / 100 };
+  }).sort((a, b) => a.day - b.day);
+
+  // 機台數量（開機台數備註 B欄，index 1）
+  const machineCounts = {};
+  const machineSheet = ss.getSheetByName('開機台數備註');
+  if (machineSheet) {
+    const md = machineSheet.getDataRange().getValues();
+    for (let i = 1; i < md.length; i++) {
+      const rawD = md[i][0];
+      const dStr = rawD instanceof Date
+        ? Utilities.formatDate(rawD, tz, 'yyyy/MM/dd')
+        : String(rawD || '').trim();
+      const cnt = Number(md[i][1]) || 0;
+      if (!dStr || !cnt) continue;
+      const p = dStr.split(/[\/\-]/);
+      if (p.length < 3) continue;
+      const my = Number(p[0]), mm = Number(p[1]), md2 = Number(p[2]);
+      if (my !== currentYear || mm !== currentMonth) continue;
+      machineCounts[`${String(mm).padStart(2,'0')}/${String(md2).padStart(2,'0')}`] = cnt;
+    }
+  }
+
+  return { monthly, daily, machineCounts, currentMonth, currentYear };
+}
+
+// ── 褙膠詳細報表（月報 + 日報）────────────────────────────────────────────────
+
+function getBackingReport_() {
+  const ss = SpreadsheetApp.openById(SS_ID);
+  const tz = 'Asia/Ho_Chi_Minh';
+  const now = new Date();
+  const currentYear  = Number(Utilities.formatDate(now, tz, 'yyyy'));
+  const currentMonth = Number(Utilities.formatDate(now, tz, 'MM'));
+
+  // 歷史月報匯總（A=年, B=月, C=卷數, D=效率卷數, E=加權工時）
+  const histMap = {};
+  const histSheet = ss.getSheetByName('褙膠月報匯總');
+  if (histSheet) {
+    const hd = histSheet.getDataRange().getValues();
+    for (let i = 1; i < hd.length; i++) {
+      const y = Number(hd[i][0]), m = Number(hd[i][1]);
+      if (!y || !m) continue;
+      histMap[`${y}-${m}`] = {
+        effRolls: Number(hd[i][3]) || 0,
+        weightedHours: Number(hd[i][4]) || 0
+      };
+    }
+  }
+
+  // 褙膠記錄：col 2=工號, 4=上班時數, 13=效率卷數(N), 14=加權工時(O)
+  const monthlyDet = {};
+  const dailyDet   = {};
+
+  const recSheet = ss.getSheetByName('褙膠記錄');
+  if (recSheet) {
+    const rows = recSheet.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      const rawDate   = rows[i][0];
+      const dateStr   = rawDate instanceof Date
+        ? Utilities.formatDate(rawDate, tz, 'yyyy/MM/dd')
+        : String(rawDate || '').trim();
+      const empId     = String(rows[i][2] || '').trim();
+      const workH     = Number(rows[i][4]) || 0;
+      const effRolls  = Number(rows[i][13]) || 0;
+      const weightedH = Number(rows[i][14]) || 0;
+
+      if (!dateStr || !workH) continue;
+
+      const parts = dateStr.split(/[\/\-]/);
+      if (parts.length < 3) continue;
+      const year  = Number(parts[0]);
+      const month = Number(parts[1]);
+      const day   = Number(parts[2]);
+      if (year !== currentYear) continue;
+
+      const empDayKey = `${empId}|${dateStr}`;
+
+      if (!monthlyDet[month]) monthlyDet[month] = { effRolls: 0, weightedHours: 0, empDays: {} };
+      if (!monthlyDet[month].empDays[empDayKey]) {
+        monthlyDet[month].empDays[empDayKey] = true;
+        monthlyDet[month].weightedHours += weightedH;
+      }
+      monthlyDet[month].effRolls += effRolls;
+
+      if (month === currentMonth) {
+        const dayKey = `${String(month).padStart(2,'0')}/${String(day).padStart(2,'0')}`;
+        if (!dailyDet[dayKey]) dailyDet[dayKey] = { effRolls: 0, weightedHours: 0, empSet: {} };
+        if (!dailyDet[dayKey].empSet[empId]) {
+          dailyDet[dayKey].empSet[empId] = true;
+          dailyDet[dayKey].weightedHours += weightedH;
+        }
+        dailyDet[dayKey].effRolls += effRolls;
+      }
+    }
+  }
+
+  const monthly = [];
+  for (let m = 1; m <= currentMonth; m++) {
+    const det = monthlyDet[m];
+    if (det) {
+      monthly.push({ month: m,
+        effRolls: Math.round(det.effRolls * 100) / 100,
+        weightedHours: Math.round(det.weightedHours * 100) / 100,
+        hasData: true, isHistorical: false });
+    } else {
+      const hist = histMap[`${currentYear}-${m}`];
+      if (hist && (hist.effRolls || hist.weightedHours)) {
+        monthly.push({ month: m,
+          effRolls: Math.round(hist.effRolls * 100) / 100,
+          weightedHours: Math.round(hist.weightedHours * 100) / 100,
+          hasData: true, isHistorical: true });
+      } else {
+        monthly.push({ month: m, hasData: false, isHistorical: false });
+      }
+    }
+  }
+
+  const daily = Object.keys(dailyDet).map(dayKey => {
+    const dd = dailyDet[dayKey];
+    return { date: dayKey, day: Number(dayKey.split('/')[1]),
+      effRolls: Math.round(dd.effRolls * 100) / 100,
+      weightedHours: Math.round(dd.weightedHours * 100) / 100 };
+  }).sort((a, b) => a.day - b.day);
+
+  // 機台數量（開機台數備註 C欄，index 2）
+  const machineCounts = {};
+  const machineSheet = ss.getSheetByName('開機台數備註');
+  if (machineSheet) {
+    const md = machineSheet.getDataRange().getValues();
+    for (let i = 1; i < md.length; i++) {
+      const rawD = md[i][0];
+      const dStr = rawD instanceof Date
+        ? Utilities.formatDate(rawD, tz, 'yyyy/MM/dd')
+        : String(rawD || '').trim();
+      const cnt = Number(md[i][2]) || 0;
+      if (!dStr || !cnt) continue;
+      const p = dStr.split(/[\/\-]/);
+      if (p.length < 3) continue;
+      const my = Number(p[0]), mm = Number(p[1]), md2 = Number(p[2]);
+      if (my !== currentYear || mm !== currentMonth) continue;
+      machineCounts[`${String(mm).padStart(2,'0')}/${String(md2).padStart(2,'0')}`] = cnt;
+    }
+  }
+
+  return { monthly, daily, machineCounts, currentMonth, currentYear };
+}
+
+// ── 焊接詳細報表（月報 + 日報）────────────────────────────────────────────────
+
+function getWeldingReport_() {
+  const ss = SpreadsheetApp.openById(SS_ID);
+  const tz = 'Asia/Ho_Chi_Minh';
+  const now = new Date();
+  const currentYear  = Number(Utilities.formatDate(now, tz, 'yyyy'));
+  const currentMonth = Number(Utilities.formatDate(now, tz, 'MM'));
+
+  // 歷史月報匯總（A=年, B=月, C=效率換算, D=加權工時）
+  const histMap = {};
+  const histSheet = ss.getSheetByName('焊接月報匯總');
+  if (histSheet) {
+    const hd = histSheet.getDataRange().getValues();
+    for (let i = 1; i < hd.length; i++) {
+      const y = Number(hd[i][0]), m = Number(hd[i][1]);
+      if (!y || !m) continue;
+      histMap[`${y}-${m}`] = {
+        effScore: Number(hd[i][2]) || 0,
+        weightedHours: Number(hd[i][3]) || 0
+      };
+    }
+  }
+
+  // 焊接記錄：col 2=工號, 4=上班時數, 5=異常時數, 10=效率換算
+  const monthlyDet = {};
+  const dailyDet   = {};
+
+  const recSheet = ss.getSheetByName('焊接記錄');
+  if (recSheet) {
+    const rows = recSheet.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      const rawDate  = rows[i][0];
+      const dateStr  = rawDate instanceof Date
+        ? Utilities.formatDate(rawDate, tz, 'yyyy/MM/dd')
+        : String(rawDate || '').trim();
+      const empId    = String(rows[i][2] || '').trim();
+      const workH    = Number(rows[i][4]) || 0;
+      const abnH     = Number(rows[i][5]) || 0;
+      const effScore = Number(rows[i][10]) || 0;
+
+      if (!dateStr || !workH) continue;
+
+      const parts = dateStr.split(/[\/\-]/);
+      if (parts.length < 3) continue;
+      const year  = Number(parts[0]);
+      const month = Number(parts[1]);
+      const day   = Number(parts[2]);
+      if (year !== currentYear) continue;
+
+      const P         = workH - abnH;
+      const empDayKey = `${empId}|${dateStr}`;
+
+      if (!monthlyDet[month]) monthlyDet[month] = { effScore: 0, weightedHours: 0, empDays: {} };
+      if (!monthlyDet[month].empDays[empDayKey]) {
+        monthlyDet[month].empDays[empDayKey] = true;
+        monthlyDet[month].weightedHours += P;
+      }
+      monthlyDet[month].effScore += effScore;
+
+      if (month === currentMonth) {
+        const dayKey = `${String(month).padStart(2,'0')}/${String(day).padStart(2,'0')}`;
+        if (!dailyDet[dayKey]) dailyDet[dayKey] = { effScore: 0, weightedHours: 0, empSet: {} };
+        if (!dailyDet[dayKey].empSet[empId]) {
+          dailyDet[dayKey].empSet[empId] = true;
+          dailyDet[dayKey].weightedHours += P;
+        }
+        dailyDet[dayKey].effScore += effScore;
+      }
+    }
+  }
+
+  const monthly = [];
+  for (let m = 1; m <= currentMonth; m++) {
+    const det = monthlyDet[m];
+    if (det) {
+      monthly.push({ month: m,
+        effScore: Math.round(det.effScore * 100) / 100,
+        weightedHours: Math.round(det.weightedHours * 100) / 100,
+        hasData: true, isHistorical: false });
+    } else {
+      const hist = histMap[`${currentYear}-${m}`];
+      if (hist && (hist.effScore || hist.weightedHours)) {
+        monthly.push({ month: m,
+          effScore: Math.round(hist.effScore * 100) / 100,
+          weightedHours: Math.round(hist.weightedHours * 100) / 100,
+          hasData: true, isHistorical: true });
+      } else {
+        monthly.push({ month: m, hasData: false, isHistorical: false });
+      }
+    }
+  }
+
+  const daily = Object.keys(dailyDet).map(dayKey => {
+    const dd = dailyDet[dayKey];
+    return { date: dayKey, day: Number(dayKey.split('/')[1]),
+      effScore: Math.round(dd.effScore * 100) / 100,
+      weightedHours: Math.round(dd.weightedHours * 100) / 100 };
+  }).sort((a, b) => a.day - b.day);
+
+  // 機台數量（開機台數備註 D欄，index 3）
+  const machineCounts = {};
+  const machineSheet = ss.getSheetByName('開機台數備註');
+  if (machineSheet) {
+    const md = machineSheet.getDataRange().getValues();
+    for (let i = 1; i < md.length; i++) {
+      const rawD = md[i][0];
+      const dStr = rawD instanceof Date
+        ? Utilities.formatDate(rawD, tz, 'yyyy/MM/dd')
+        : String(rawD || '').trim();
+      const cnt = Number(md[i][3]) || 0;
+      if (!dStr || !cnt) continue;
+      const p = dStr.split(/[\/\-]/);
+      if (p.length < 3) continue;
+      const my = Number(p[0]), mm = Number(p[1]), md2 = Number(p[2]);
+      if (my !== currentYear || mm !== currentMonth) continue;
+      machineCounts[`${String(mm).padStart(2,'0')}/${String(md2).padStart(2,'0')}`] = cnt;
+    }
+  }
+
+  return { monthly, daily, machineCounts, currentMonth, currentYear };
 }
 
 // ── 切勾報表 ──────────────────────────────────────────────────────────────────
@@ -283,7 +570,7 @@ function getCuttingReport_() {
 
   for (let i = 1; i < data.length; i++) {
     const dateStr = String(data[i][0] || '').trim();
-    const count   = Number(data[i][1]) || 0; // cut-count 欄
+    const count   = Number(data[i][1]) || 0;
     if (!dateStr || count === 0) continue;
 
     const parts = dateStr.split(/[\/\-]/);
@@ -302,19 +589,15 @@ function getCuttingReport_() {
     }
   }
 
-  const monthlyArr = Object.keys(monthly).sort()
-    .map(m => ({ month: m, totalCount: monthly[m] }));
-
-  const dailyArr = Object.keys(daily).sort()
-    .map(d => ({ date: d, count: daily[d] }));
-
-  const currentMonthKey = `${currentYear}-${String(currentMonth).padStart(2,'0')}`;
+  const monthlyArr = Object.keys(monthly).sort().map(m => ({ month: m, totalCount: monthly[m] }));
+  const dailyArr   = Object.keys(daily).sort().map(d => ({ date: d, count: daily[d] }));
+  const currentMonthKey   = `${currentYear}-${String(currentMonth).padStart(2,'0')}`;
   const currentMonthTotal = monthly[currentMonthKey] || 0;
 
   return { monthly: monthlyArr, daily: dailyArr, currentMonthTotal };
 }
 
-// ── 裁片報表 ──────────────────────────────────────────────────────────────────
+// ── 裁切報表 ──────────────────────────────────────────────────────────────────
 
 function getProcessReport_() {
   const ss    = SpreadsheetApp.openById(SS_ID);
@@ -326,7 +609,7 @@ function getProcessReport_() {
   const currentYear  = Number(Utilities.formatDate(now, tz, 'yyyy'));
   const currentMonth = Number(Utilities.formatDate(now, tz, 'MM'));
 
-  // 欄位：0=生產日期, 1=開始時間(HH:MM), 2=結束時間(HH:MM), 3=上班時數
+  // col 0=生產日期, 1=開始時間(HH:MM), 2=結束時間(HH:MM), 3=上班時數
   const data    = sheet.getDataRange().getValues();
   const monthly = {};
   const daily   = {};
@@ -366,12 +649,9 @@ function getProcessReport_() {
   const monthlyArr = Object.keys(monthly).sort().map(m => {
     const { workHours, prodHours } = monthly[m];
     const utilization = workHours > 0 ? Math.round(prodHours / workHours * 1000) / 10 : 0;
-    return {
-      month: m,
-      utilization,
+    return { month: m, utilization,
       totalWorkHours: Math.round(workHours * 100) / 100,
-      totalProdHours: Math.round(prodHours * 100) / 100
-    };
+      totalProdHours: Math.round(prodHours * 100) / 100 };
   });
 
   const dailyArr = Object.keys(daily).sort().map(d => {
