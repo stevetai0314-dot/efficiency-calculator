@@ -609,17 +609,16 @@ function getProcessReport_() {
   const currentYear  = Number(Utilities.formatDate(now, tz, 'yyyy'));
   const currentMonth = Number(Utilities.formatDate(now, tz, 'MM'));
 
-  // col 0=生產日期, 1=開始時間(HH:MM), 2=結束時間(HH:MM), 3=上班時數
+  // col 0=生產日期, 23=有效時數(X欄), 25=裁切工時(Z欄)
   const data    = sheet.getDataRange().getValues();
   const monthly = {};
   const daily   = {};
 
   for (let i = 1; i < data.length; i++) {
-    const dateStr   = String(data[i][0] || '').trim();
-    const startStr  = String(data[i][1] || '').trim();
-    const endStr    = String(data[i][2] || '').trim();
-    const workHours = Number(data[i][3]) || 0;
-    if (!dateStr || !startStr || !endStr) continue;
+    const dateStr  = String(data[i][0] || '').trim();
+    const effHours = Number(data[i][23]) || 0;
+    const cutHours = Number(data[i][25]) || 0;
+    if (!dateStr) continue;
 
     const parts = dateStr.split(/[\/\-]/);
     if (parts.length < 3) continue;
@@ -628,35 +627,30 @@ function getProcessReport_() {
     const day   = Number(parts[2]);
     if (year !== currentYear) continue;
 
-    const [sh, sm] = startStr.split(':').map(Number);
-    const [eh, em] = endStr.split(':').map(Number);
-    const prodHours = ((eh * 60 + em) - (sh * 60 + sm)) / 60;
-    if (prodHours <= 0) continue;
-
     const monthKey = `${year}-${String(month).padStart(2,'0')}`;
-    if (!monthly[monthKey]) monthly[monthKey] = { workHours: 0, prodHours: 0 };
-    monthly[monthKey].workHours += workHours;
-    monthly[monthKey].prodHours += prodHours;
+    if (!monthly[monthKey]) monthly[monthKey] = { effHours: 0, cutHours: 0 };
+    monthly[monthKey].effHours += effHours;
+    monthly[monthKey].cutHours += cutHours;
 
     if (month === currentMonth) {
       const dateKey = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-      if (!daily[dateKey]) daily[dateKey] = { workHours: 0, prodHours: 0 };
-      daily[dateKey].workHours += workHours;
-      daily[dateKey].prodHours += prodHours;
+      if (!daily[dateKey]) daily[dateKey] = { effHours: 0, cutHours: 0 };
+      daily[dateKey].effHours += effHours;
+      daily[dateKey].cutHours += cutHours;
     }
   }
 
   const monthlyArr = Object.keys(monthly).sort().map(m => {
-    const { workHours, prodHours } = monthly[m];
-    const utilization = workHours > 0 ? Math.round(prodHours / workHours * 1000) / 10 : 0;
+    const { effHours, cutHours } = monthly[m];
+    const utilization = cutHours > 0 ? Math.round(effHours / cutHours * 1000) / 10 : null;
     return { month: m, utilization,
-      totalWorkHours: Math.round(workHours * 100) / 100,
-      totalProdHours: Math.round(prodHours * 100) / 100 };
+      totalEffHours: Math.round(effHours * 100) / 100,
+      totalCutHours: Math.round(cutHours * 100) / 100 };
   });
 
   const dailyArr = Object.keys(daily).sort().map(d => {
-    const { workHours, prodHours } = daily[d];
-    const utilization = workHours > 0 ? Math.round(prodHours / workHours * 1000) / 10 : 0;
+    const { effHours, cutHours } = daily[d];
+    const utilization = cutHours > 0 ? Math.round(effHours / cutHours * 1000) / 10 : null;
     return { date: d, utilization };
   });
 
