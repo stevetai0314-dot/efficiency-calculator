@@ -340,7 +340,9 @@
       <thead class="table-primary text-center">
         <tr>
           <th style="width:80px">日期</th>
-          <th>當日利用率</th>
+          <th>有效時數</th>
+          <th>裁切工時</th>
+          <th>效率</th>
         </tr>
       </thead>
       <tbody id="process-daily-body">
@@ -946,11 +948,13 @@ function renderProcessReport(data) {
 
   if (!daily.length) {
     document.getElementById('process-daily-body').innerHTML =
-      '<tr><td colspan="2" class="text-center text-muted py-3">本月尚無資料</td></tr>';
+      '<tr><td colspan="4" class="text-center text-muted py-3">本月尚無資料</td></tr>';
   } else {
     document.getElementById('process-daily-body').innerHTML = daily.map(d =>
       `<tr class="text-center">
         <td class="fw-semibold">${d.date.slice(5)}</td>
+        <td class="text-end">${fmt2(d.totalEffHours)}</td>
+        <td class="text-end">${fmt2(d.totalCutHours)}</td>
         <td class="td-num">${fmtUtil(d.utilization)}</td>
       </tr>`
     ).join('');

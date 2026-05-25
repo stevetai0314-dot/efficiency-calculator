@@ -654,7 +654,9 @@ function getProcessReport_() {
   const dailyArr = Object.keys(daily).sort().map(d => {
     const { effHours, cutHours } = daily[d];
     const utilization = cutHours > 0 ? Math.round(effHours / cutHours * 1000) / 10 : null;
-    return { date: d, utilization };
+    return { date: d, utilization,
+      totalEffHours: Math.round(effHours * 100) / 100,
+      totalCutHours: Math.round(cutHours * 100) / 100 };
   });
 
   return { monthly: monthlyArr, daily: dailyArr };
