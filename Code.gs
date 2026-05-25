@@ -569,7 +569,10 @@ function getCuttingReport_() {
   const daily   = {};
 
   for (let i = 1; i < data.length; i++) {
-    const dateStr = String(data[i][0] || '').trim();
+    const rawDate = data[i][0];
+    const dateStr = rawDate instanceof Date
+      ? Utilities.formatDate(rawDate, tz, 'yyyy/MM/dd')
+      : String(rawDate || '').trim();
     const count   = Number(data[i][1]) || 0;
     if (!dateStr || count === 0) continue;
 
