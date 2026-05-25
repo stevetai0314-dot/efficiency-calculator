@@ -921,12 +921,13 @@ function renderProcessReport(data) {
   const currentYear  = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
 
-  document.getElementById('process-year-label').textContent = `${currentYear} 年裁片工時利用率月報`;
+  document.getElementById('process-year-label').textContent =
+    `${currentYear} 年裁片效率月報`;
   document.getElementById('process-daily-title').textContent =
     `▼ ${currentYear}年 ${currentMonth}月 日報`;
 
-  function utilCls(u) {
-    return u >= 100 ? 'eff-high' : u >= 90 ? 'eff-mid' : 'eff-low';
+  function fmtUtil(u) {
+    return u === null ? '-' : u.toFixed(1) + '%';
   }
 
   if (!monthly.length) {
@@ -936,9 +937,9 @@ function renderProcessReport(data) {
     document.getElementById('process-monthly-body').innerHTML = monthly.map(m =>
       `<tr class="text-center">
         <td class="fw-semibold">${m.month}</td>
-        <td class="text-end">${fmt2(m.totalWorkHours)}</td>
-        <td class="text-end">${fmt2(m.totalProdHours)}</td>
-        <td class="${utilCls(m.utilization)}">${m.utilization.toFixed(1)}%</td>
+        <td class="text-end">${fmt2(m.totalEffHours)}</td>
+        <td class="text-end">${fmt2(m.totalCutHours)}</td>
+        <td class="td-num">${fmtUtil(m.utilization)}</td>
       </tr>`
     ).join('');
   }
@@ -950,7 +951,7 @@ function renderProcessReport(data) {
     document.getElementById('process-daily-body').innerHTML = daily.map(d =>
       `<tr class="text-center">
         <td class="fw-semibold">${d.date.slice(5)}</td>
-        <td class="${utilCls(d.utilization)}">${d.utilization.toFixed(1)}%</td>
+        <td class="td-num">${fmtUtil(d.utilization)}</td>
       </tr>`
     ).join('');
   }
