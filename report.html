@@ -275,11 +275,13 @@
       <thead class="table-dark text-center">
         <tr>
           <th style="width:80px">月份</th>
-          <th>月總數量</th>
+          <th>切勾數量</th>
+          <th>工作時數</th>
+          <th>機器數</th>
         </tr>
       </thead>
       <tbody id="cutting-monthly-body">
-        <tr><td colspan="2" class="text-center text-muted py-3">載入中…</td></tr>
+        <tr><td colspan="4" class="text-center text-muted py-3">載入中…</td></tr>
       </tbody>
       <tfoot id="cutting-monthly-foot"></tfoot>
     </table>
@@ -294,11 +296,13 @@
       <thead class="table-primary text-center">
         <tr>
           <th style="width:80px">日期</th>
-          <th>日數量</th>
+          <th>切勾數量</th>
+          <th>工作時數</th>
+          <th>機器數</th>
         </tr>
       </thead>
       <tbody id="cutting-daily-body">
-        <tr><td colspan="2" class="text-center text-muted py-3">載入中…</td></tr>
+        <tr><td colspan="4" class="text-center text-muted py-3">載入中…</td></tr>
       </tbody>
       <tfoot id="cutting-daily-foot"></tfoot>
     </table>
@@ -884,31 +888,35 @@ function renderCuttingReport(data) {
 
   if (!monthly.length) {
     document.getElementById('cutting-monthly-body').innerHTML =
-      '<tr><td colspan="2" class="text-center text-muted py-3">尚無資料</td></tr>';
+      '<tr><td colspan="4" class="text-center text-muted py-3">尚無資料</td></tr>';
   } else {
     document.getElementById('cutting-monthly-body').innerHTML = monthly.map(m =>
       `<tr class="text-center">
         <td class="fw-semibold">${m.month}</td>
         <td class="text-end">${m.totalCount.toLocaleString()}</td>
+        <td class="text-end">${fmt2(m.totalWorkH)}</td>
+        <td class="text-end">${m.totalMachines}</td>
       </tr>`
     ).join('');
     const total = monthly.reduce((s, m) => s + m.totalCount, 0);
     document.getElementById('cutting-monthly-foot').innerHTML =
-      `<tr class="text-center"><td>年度累計</td><td class="text-end">${total.toLocaleString()}</td></tr>`;
+      `<tr class="text-center"><td>年度累計</td><td class="text-end">${total.toLocaleString()}</td><td colspan="2"></td></tr>`;
   }
 
   if (!daily.length) {
     document.getElementById('cutting-daily-body').innerHTML =
-      '<tr><td colspan="2" class="text-center text-muted py-3">本月尚無資料</td></tr>';
+      '<tr><td colspan="4" class="text-center text-muted py-3">本月尚無資料</td></tr>';
   } else {
     document.getElementById('cutting-daily-body').innerHTML = daily.map(d =>
       `<tr class="text-center">
         <td class="fw-semibold">${d.date.slice(5)}</td>
         <td class="text-end">${d.count.toLocaleString()}</td>
+        <td class="text-end">${fmt2(d.workH)}</td>
+        <td class="text-end">${d.machines}</td>
       </tr>`
     ).join('');
     document.getElementById('cutting-daily-foot').innerHTML =
-      `<tr class="text-center"><td>月合計</td><td class="text-end">${currentMonthTotal.toLocaleString()}</td></tr>`;
+      `<tr class="text-center"><td>月合計</td><td class="text-end">${currentMonthTotal.toLocaleString()}</td><td colspan="2"></td></tr>`;
   }
 }
 

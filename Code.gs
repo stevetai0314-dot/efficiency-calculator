@@ -573,7 +573,9 @@ function getCuttingReport_() {
     const dateStr = rawDate instanceof Date
       ? Utilities.formatDate(rawDate, tz, 'yyyy/MM/dd')
       : String(rawDate || '').trim();
-    const count   = Number(data[i][1]) || 0;
+    const count    = Number(data[i][1]) || 0;
+    const workH    = Number(data[i][2]) || 0;
+    const machines = Number(data[i][3]) || 0;
     if (!dateStr || count === 0) continue;
 
     const parts = dateStr.split(/[\/\-]/);
@@ -584,18 +586,34 @@ function getCuttingReport_() {
     if (year !== currentYear) continue;
 
     const monthKey = `${year}-${String(month).padStart(2,'0')}`;
-    monthly[monthKey] = (monthly[monthKey] || 0) + count;
+    if (!monthly[monthKey]) monthly[monthKey] = { count: 0, workH: 0, machines: 0 };
+    monthly[monthKey].count    += count;
+    monthly[monthKey].workH    += workH;
+    monthly[monthKey].machines += machines;
 
     if (month === currentMonth) {
       const dateKey = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-      daily[dateKey] = (daily[dateKey] || 0) + count;
+      if (!daily[dateKey]) daily[dateKey] = { count: 0, workH: 0, machines: 0 };
+      daily[dateKey].count    += count;
+      daily[dateKey].workH    += workH;
+      daily[dateKey].machines += machines;
     }
   }
 
-  const monthlyArr = Object.keys(monthly).sort().map(m => ({ month: m, totalCount: monthly[m] }));
-  const dailyArr   = Object.keys(daily).sort().map(d => ({ date: d, count: daily[d] }));
+  const monthlyArr = Object.keys(monthly).sort().map(m => ({
+    month: m,
+    totalCount: monthly[m].count,
+    totalWorkH: Math.round(monthly[m].workH * 100) / 100,
+    totalMachines: monthly[m].machines
+  }));
+  const dailyArr = Object.keys(daily).sort().map(d => ({
+    date: d,
+    count: daily[d].count,
+    workH: Math.round(daily[d].workH * 100) / 100,
+    machines: daily[d].machines
+  }));
   const currentMonthKey   = `${currentYear}-${String(currentMonth).padStart(2,'0')}`;
-  const currentMonthTotal = monthly[currentMonthKey] || 0;
+  const currentMonthTotal = monthly[currentMonthKey] ? monthly[currentMonthKey].count : 0;
 
   return { monthly: monthlyArr, daily: dailyArr, currentMonthTotal };
 }
