@@ -31,6 +31,12 @@
     .no-data-div { color: #adb5bd; text-align: center; padding: 20px; font-size: 13px; }
     .day-holiday td { background: #ffe5e5 !important; color: #b02020 !important; }
     .day-holiday .col-inv { background: #ffd8d8 !important; }
+    /* sticky daily headers */
+    .daily-table-wrap { overflow-y: clip; }
+    .daily-thead th { position: sticky; top: var(--navbar-h, 57px); z-index: 5; background-clip: padding-box; }
+    .table-primary.daily-thead th { background-color: #cfe2ff; }
+    /* detail section */
+    .detail-label { color: #495057; font-size: 0.8rem; font-weight: 600; margin-top: 1.25rem; margin-bottom: 0.25rem; }
   </style>
 </head>
 <body>
@@ -57,24 +63,27 @@
 
 <div class="container-fluid px-3 py-3">
 
-  <!-- Tab 切換 -->
-  <ul class="nav nav-tabs mb-3" id="reportTabs">
-    <li class="nav-item">
-      <button class="nav-link active" onclick="switchTab('slitting', this)">分條</button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" onclick="switchTab('welding', this)">超音波焊接</button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" onclick="switchTab('backing', this)">自黏褙膠</button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" onclick="switchTab('cutting', this)">切勾</button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" onclick="switchTab('process', this)">裁片</button>
-    </li>
-  </ul>
+  <!-- Tab 切換 + 折疊按鈕 -->
+  <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+    <ul class="nav nav-tabs mb-0" id="reportTabs">
+      <li class="nav-item">
+        <button class="nav-link active" onclick="switchTab('slitting', this)">分條</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" onclick="switchTab('welding', this)">超音波焊接</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" onclick="switchTab('backing', this)">自黏褙膠</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" onclick="switchTab('cutting', this)">切勾</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" onclick="switchTab('process', this)">裁片</button>
+      </li>
+    </ul>
+    <button class="btn btn-sm btn-outline-secondary ms-auto" id="toggleDailyBtn" onclick="toggleDailyAll(this)">折疊日報 ▲</button>
+  </div>
 
   <!-- ── 分條 Tab ── -->
   <div id="tab-slitting">
@@ -115,32 +124,47 @@
     </table>
     </div>
 
-    <!-- 日報標題 -->
-    <div class="small text-muted mt-3 mb-1" id="slitting-daily-title">▼ 日報</div>
+    <!-- 日報（可折疊） -->
+    <div class="daily-section">
+      <div class="small text-muted mt-3 mb-1" id="slitting-daily-title">▼ 日報</div>
+      <div class="table-responsive daily-table-wrap">
+      <table class="table table-sm table-bordered align-middle mb-0">
+        <thead class="table-primary text-center daily-thead">
+          <tr>
+            <th rowspan="2" style="width:55px;vertical-align:middle">日期</th>
+            <th rowspan="2" style="width:45px;vertical-align:middle">機台<br>數量</th>
+            <th colspan="2" class="col-inv">庫存參考</th>
+            <th colspan="4">效率計算</th>
+          </tr>
+          <tr>
+            <th class="col-inv">捲數<small>J</small></th>
+            <th class="col-inv">捲數／時<small>J ÷ P</small></th>
+            <th>效率捲數<small>O</small></th>
+            <th>加權工時<small>P</small></th>
+            <th>效率捲／時<small>O ÷ P</small></th>
+            <th>效率%<small>O ÷ P ÷ 6.3</small></th>
+          </tr>
+        </thead>
+        <tbody id="slitting-daily-body">
+          <tr><td colspan="8" class="text-center text-muted py-3">載入中…</td></tr>
+        </tbody>
+        <tfoot id="slitting-daily-foot"></tfoot>
+      </table>
+      </div>
+    </div><!-- /daily-section -->
 
-    <!-- 日報表 -->
+    <!-- 分條明細（欄位待定義） -->
+    <div class="detail-label">▼ 分條明細</div>
     <div class="table-responsive">
-    <table class="table table-sm table-bordered align-middle mb-0">
-      <thead class="table-primary text-center">
+    <table class="table table-sm table-bordered align-middle mb-0" id="slitting-detail">
+      <thead class="table-light text-center">
         <tr>
-          <th rowspan="2" style="width:55px;vertical-align:middle">日期</th>
-          <th rowspan="2" style="width:45px;vertical-align:middle">機台<br>數量</th>
-          <th colspan="2" class="col-inv">庫存參考</th>
-          <th colspan="4">效率計算</th>
-        </tr>
-        <tr>
-          <th class="col-inv">捲數<small>J</small></th>
-          <th class="col-inv">捲數／時<small>J ÷ P</small></th>
-          <th>效率捲數<small>O</small></th>
-          <th>加權工時<small>P</small></th>
-          <th>效率捲／時<small>O ÷ P</small></th>
-          <th>效率%<small>O ÷ P ÷ 6.3</small></th>
+          <!-- TODO: 待定義欄位 -->
         </tr>
       </thead>
-      <tbody id="slitting-daily-body">
-        <tr><td colspan="8" class="text-center text-muted py-3">載入中…</td></tr>
+      <tbody id="slitting-detail-body">
+        <tr><td class="text-center text-muted py-2 small">（欄位待定義）</td></tr>
       </tbody>
-      <tfoot id="slitting-daily-foot"></tfoot>
     </table>
     </div>
 
@@ -179,26 +203,41 @@
     </table>
     </div>
 
-    <!-- 日報標題 -->
-    <div class="small text-muted mt-3 mb-1" id="welding-daily-title">▼ 日報</div>
+    <!-- 日報（可折疊） -->
+    <div class="daily-section">
+      <div class="small text-muted mt-3 mb-1" id="welding-daily-title">▼ 日報</div>
+      <div class="table-responsive daily-table-wrap">
+      <table class="table table-sm table-bordered align-middle mb-0">
+        <thead class="table-primary text-center daily-thead">
+          <tr>
+            <th style="width:55px">日期</th>
+            <th style="width:45px">機台<br>數量</th>
+            <th>效率換算<small>C</small></th>
+            <th>加權工時<small>P</small></th>
+            <th>效率換算/時<small>C ÷ P</small></th>
+            <th>效率%<small>C ÷ P ÷ 目標</small></th>
+          </tr>
+        </thead>
+        <tbody id="welding-daily-body">
+          <tr><td colspan="6" class="text-center text-muted py-3">載入中…</td></tr>
+        </tbody>
+        <tfoot id="welding-daily-foot"></tfoot>
+      </table>
+      </div>
+    </div><!-- /daily-section -->
 
-    <!-- 日報表 -->
+    <!-- 焊接明細（欄位待定義） -->
+    <div class="detail-label">▼ 焊接明細</div>
     <div class="table-responsive">
-    <table class="table table-sm table-bordered align-middle mb-0">
-      <thead class="table-primary text-center">
+    <table class="table table-sm table-bordered align-middle mb-0" id="welding-detail">
+      <thead class="table-light text-center">
         <tr>
-          <th style="width:55px">日期</th>
-          <th style="width:45px">機台<br>數量</th>
-          <th>效率換算<small>C</small></th>
-          <th>加權工時<small>P</small></th>
-          <th>效率換算/時<small>C ÷ P</small></th>
-          <th>效率%<small>C ÷ P ÷ 目標</small></th>
+          <!-- TODO: 待定義欄位 -->
         </tr>
       </thead>
-      <tbody id="welding-daily-body">
-        <tr><td colspan="6" class="text-center text-muted py-3">載入中…</td></tr>
+      <tbody id="welding-detail-body">
+        <tr><td class="text-center text-muted py-2 small">（欄位待定義）</td></tr>
       </tbody>
-      <tfoot id="welding-daily-foot"></tfoot>
     </table>
     </div>
 
@@ -237,26 +276,41 @@
     </table>
     </div>
 
-    <!-- 日報標題 -->
-    <div class="small text-muted mt-3 mb-1" id="backing-daily-title">▼ 日報</div>
+    <!-- 日報（可折疊） -->
+    <div class="daily-section">
+      <div class="small text-muted mt-3 mb-1" id="backing-daily-title">▼ 日報</div>
+      <div class="table-responsive daily-table-wrap">
+      <table class="table table-sm table-bordered align-middle mb-0">
+        <thead class="table-primary text-center daily-thead">
+          <tr>
+            <th style="width:55px">日期</th>
+            <th style="width:45px">機台<br>數量</th>
+            <th>效率卷數<small>N</small></th>
+            <th>加權工時<small>O</small></th>
+            <th>效率卷／時<small>N ÷ O</small></th>
+            <th>效率%<small>N ÷ O ÷ 55</small></th>
+          </tr>
+        </thead>
+        <tbody id="backing-daily-body">
+          <tr><td colspan="6" class="text-center text-muted py-3">載入中…</td></tr>
+        </tbody>
+        <tfoot id="backing-daily-foot"></tfoot>
+      </table>
+      </div>
+    </div><!-- /daily-section -->
 
-    <!-- 日報表 -->
+    <!-- 褙膠明細（欄位待定義） -->
+    <div class="detail-label">▼ 褙膠明細</div>
     <div class="table-responsive">
-    <table class="table table-sm table-bordered align-middle mb-0">
-      <thead class="table-primary text-center">
+    <table class="table table-sm table-bordered align-middle mb-0" id="backing-detail">
+      <thead class="table-light text-center">
         <tr>
-          <th style="width:55px">日期</th>
-          <th style="width:45px">機台<br>數量</th>
-          <th>效率卷數<small>N</small></th>
-          <th>加權工時<small>O</small></th>
-          <th>效率卷／時<small>N ÷ O</small></th>
-          <th>效率%<small>N ÷ O ÷ 55</small></th>
+          <!-- TODO: 待定義欄位 -->
         </tr>
       </thead>
-      <tbody id="backing-daily-body">
-        <tr><td colspan="6" class="text-center text-muted py-3">載入中…</td></tr>
+      <tbody id="backing-detail-body">
+        <tr><td class="text-center text-muted py-2 small">（欄位待定義）</td></tr>
       </tbody>
-      <tfoot id="backing-daily-foot"></tfoot>
     </table>
     </div>
 
@@ -287,24 +341,39 @@
     </table>
     </div>
 
-    <!-- 日報標題 -->
-    <div class="small text-muted mt-3 mb-1" id="cutting-daily-title">▼ 日報</div>
+    <!-- 日報（可折疊） -->
+    <div class="daily-section">
+      <div class="small text-muted mt-3 mb-1" id="cutting-daily-title">▼ 日報</div>
+      <div class="table-responsive daily-table-wrap">
+      <table class="table table-sm table-bordered align-middle mb-0">
+        <thead class="table-primary text-center daily-thead">
+          <tr>
+            <th style="width:80px">日期</th>
+            <th>切勾數量</th>
+            <th>工作時數</th>
+            <th>機器數</th>
+          </tr>
+        </thead>
+        <tbody id="cutting-daily-body">
+          <tr><td colspan="4" class="text-center text-muted py-3">載入中…</td></tr>
+        </tbody>
+        <tfoot id="cutting-daily-foot"></tfoot>
+      </table>
+      </div>
+    </div><!-- /daily-section -->
 
-    <!-- 日報表 -->
+    <!-- 切勾明細（欄位待定義） -->
+    <div class="detail-label">▼ 切勾明細</div>
     <div class="table-responsive">
-    <table class="table table-sm table-bordered align-middle mb-0">
-      <thead class="table-primary text-center">
+    <table class="table table-sm table-bordered align-middle mb-0" id="cutting-detail">
+      <thead class="table-light text-center">
         <tr>
-          <th style="width:80px">日期</th>
-          <th>切勾數量</th>
-          <th>工作時數</th>
-          <th>機器數</th>
+          <!-- TODO: 待定義欄位 -->
         </tr>
       </thead>
-      <tbody id="cutting-daily-body">
-        <tr><td colspan="4" class="text-center text-muted py-3">載入中…</td></tr>
+      <tbody id="cutting-detail-body">
+        <tr><td class="text-center text-muted py-2 small">（欄位待定義）</td></tr>
       </tbody>
-      <tfoot id="cutting-daily-foot"></tfoot>
     </table>
     </div>
 
@@ -335,22 +404,37 @@
     </table>
     </div>
 
-    <!-- 日報標題 -->
-    <div class="small text-muted mt-3 mb-1" id="process-daily-title">▼ 日報</div>
+    <!-- 日報（可折疊） -->
+    <div class="daily-section">
+      <div class="small text-muted mt-3 mb-1" id="process-daily-title">▼ 日報</div>
+      <div class="table-responsive daily-table-wrap">
+      <table class="table table-sm table-bordered align-middle mb-0">
+        <thead class="table-primary text-center daily-thead">
+          <tr>
+            <th style="width:80px">日期</th>
+            <th>有效時數</th>
+            <th>裁切工時</th>
+            <th>效率</th>
+          </tr>
+        </thead>
+        <tbody id="process-daily-body">
+          <tr><td colspan="4" class="text-center text-muted py-3">載入中…</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div><!-- /daily-section -->
 
-    <!-- 日報表 -->
+    <!-- 裁片明細（欄位待定義） -->
+    <div class="detail-label">▼ 裁片明細</div>
     <div class="table-responsive">
-    <table class="table table-sm table-bordered align-middle mb-0">
-      <thead class="table-primary text-center">
+    <table class="table table-sm table-bordered align-middle mb-0" id="process-detail">
+      <thead class="table-light text-center">
         <tr>
-          <th style="width:80px">日期</th>
-          <th>有效時數</th>
-          <th>裁切工時</th>
-          <th>效率</th>
+          <!-- TODO: 待定義欄位 -->
         </tr>
       </thead>
-      <tbody id="process-daily-body">
-        <tr><td colspan="2" class="text-center text-muted py-3">載入中…</td></tr>
+      <tbody id="process-detail-body">
+        <tr><td class="text-center text-muted py-2 small">（欄位待定義）</td></tr>
       </tbody>
     </table>
     </div>
@@ -367,6 +451,20 @@ const TARGET_BACK = 55;
 const TARGET_WELD = 545;
 
 const charts = {};
+
+// ── Navbar 高度 → CSS var（sticky daily headers 用）────────────────────────────
+window.addEventListener('load', () => {
+  const nav = document.querySelector('.navbar');
+  if (nav) document.documentElement.style.setProperty('--navbar-h', nav.offsetHeight + 'px');
+});
+
+// ── 折疊／展開所有日報 ────────────────────────────────────────────────────────
+function toggleDailyAll(btn) {
+  const sections = document.querySelectorAll('.daily-section');
+  const isCollapsed = sections[0]?.style.display === 'none';
+  sections.forEach(s => s.style.display = isCollapsed ? '' : 'none');
+  btn.textContent = isCollapsed ? '折疊日報 ▲' : '展開日報 ▼';
+}
 
 // ── Tab 切換 ──────────────────────────────────────────────────────────────────
 function switchTab(system, btn) {
