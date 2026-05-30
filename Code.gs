@@ -135,6 +135,7 @@ function saveRecords_(records, date, system) {
   const sheetName = system === 'welding' ? '焊接記錄'
                   : system === 'backing' ? '褙膠記錄'
                   : system === 'process' ? '裁切記錄'
+                  : system === 'cutting' ? '切勾記錄'
                   : '分條記錄';
   const sheet = getOrCreateSheet_(sheetName, system);
   const now   = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyy/MM/dd HH:mm:ss');
@@ -153,6 +154,10 @@ function saveRecords_(records, date, system) {
       r.workHours, r.abnormalHours,
       r.category, r.spec, r.coeff, r.rolls, r.efficiency,
       r.abnormalReason || '', r.newbieDeduct || ''
+    ]);
+  } else if (system === 'cutting') {
+    rows = records.map(r => [
+      date, r.cutCount || 0, r.workHours || 0, r.deptCount || 0
     ]);
   } else if (system === 'process') {
     rows = records.map(r => [
@@ -189,6 +194,8 @@ function getOrCreateSheet_(name, system) {
     } else if (system === 'backing') {
       headers = ['生產日期','儲存時間','工號','員工姓名','上班時數','異常時數',
                  '碼長','規格分類','係數','卷數','效率換算','異常原因','新人扣時%'];
+    } else if (system === 'cutting') {
+      headers = ['日期','切勾數量','工作時數','機器數'];
     } else if (system === 'process') {
       headers = ['生產日期','儲存時間','工號','員工姓名',
                  '工序','開始時間','結束時間','訂單號','客戶名稱',
