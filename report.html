@@ -24,9 +24,6 @@
     .month-row.active .eff-low { color: #fff; }
     .month-row.active .col-inv { background: #3d5166 !important; }
     th small { display: block; font-weight: 400; color: #6c757d; font-size: 10px; }
-    #tab-slitting tfoot td, #tab-backing tfoot td, #tab-welding tfoot td { background: #e9ecef; font-weight: 600; }
-    #tab-slitting table, #tab-backing table, #tab-welding table { font-size: 13px; width: 100%; }
-    #tab-slitting th, #tab-backing th, #tab-welding th { font-size: 12px; }
     .no-data { color: #ced4da; }
     .no-data-div { color: #adb5bd; text-align: center; padding: 20px; font-size: 13px; }
     .day-holiday td { background: #ffe5e5 !important; color: #b02020 !important; }
@@ -67,30 +64,21 @@
   <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
     <ul class="nav nav-tabs mb-0" id="reportTabs">
       <li class="nav-item">
-        <button class="nav-link active" onclick="switchTab('slitting', this)">分條</button>
+        <button class="nav-link active" onclick="switchTab('sc', this)">分條／切勾</button>
       </li>
       <li class="nav-item">
-        <button class="nav-link" onclick="switchTab('welding', this)">超音波焊接</button>
-      </li>
-      <li class="nav-item">
-        <button class="nav-link" onclick="switchTab('backing', this)">自黏褙膠</button>
-      </li>
-      <li class="nav-item">
-        <button class="nav-link" onclick="switchTab('cutting', this)">切勾</button>
-      </li>
-      <li class="nav-item">
-        <button class="nav-link" onclick="switchTab('process', this)">裁片</button>
+        <button class="nav-link" onclick="switchTab('wbp', this)">焊接／褙膠／裁片</button>
       </li>
     </ul>
     <button class="btn btn-sm btn-outline-secondary ms-auto" id="toggleDailyBtn" onclick="toggleDailyAll(this)">折疊日報 ▲</button>
   </div>
 
-  <!-- ── 分條 Tab ── -->
-  <div id="tab-slitting">
+  <!-- ── 分條/切勾 Tab ── -->
+  <div id="tab-sc">
 
     <div class="d-flex align-items-center mb-2 gap-3 flex-wrap">
-      <h6 class="mb-0 fw-bold" id="slitting-year-label">載入中…</h6>
-      <span class="badge bg-secondary">目標 6.3 捲／時</span>
+      <h6 class="mb-0 fw-bold" id="sc-year-label">載入中…</h6>
+      <span class="badge bg-secondary">分條目標 6.3 捲／時</span>
       <div class="ms-auto small">
         <span class="me-2 eff-high">■ ≥100%</span>
         <span class="me-2 eff-mid">■ 90–99%</span>
@@ -99,347 +87,147 @@
       </div>
     </div>
 
-    <!-- 月報表 -->
     <div class="table-responsive mb-1">
     <table class="table table-sm table-bordered align-middle mb-0">
       <thead class="table-dark text-center">
         <tr>
           <th rowspan="2" style="width:55px;vertical-align:middle">月份</th>
-          <th colspan="2" class="col-inv">庫存參考</th>
-          <th colspan="4">效率計算</th>
+          <th colspan="2" style="background:#1e4470!important">分條 庫存參考</th>
+          <th colspan="4" style="background:#1a3a5c!important">分條 效率計算</th>
+          <th colspan="3" style="background:#1a4a2e!important">切勾</th>
         </tr>
         <tr>
-          <th class="col-inv">捲數<small>J</small></th>
-          <th class="col-inv">捲數／時<small>J ÷ P</small></th>
-          <th>效率捲數<small>O（×係數）</small></th>
-          <th>加權工時<small>P</small></th>
-          <th>效率捲／時<small>O ÷ P</small></th>
-          <th>效率%<small>O ÷ P ÷ 6.3</small></th>
+          <th class="col-inv" style="background:#1e4470!important">捲數<small>J</small></th>
+          <th class="col-inv" style="background:#1e4470!important">捲數/時<small>J÷P</small></th>
+          <th style="background:#1a3a5c!important">效率捲數<small>O</small></th>
+          <th style="background:#1a3a5c!important">加權工時<small>P</small></th>
+          <th style="background:#1a3a5c!important">效率捲/時<small>O÷P</small></th>
+          <th style="background:#1a3a5c!important">效率%</th>
+          <th style="background:#1a4a2e!important">數量</th>
+          <th style="background:#1a4a2e!important">工時</th>
+          <th style="background:#1a4a2e!important">機器數</th>
         </tr>
       </thead>
-      <tbody id="slitting-monthly-body">
-        <tr><td colspan="7" class="text-center text-muted py-3">載入中…</td></tr>
+      <tbody id="sc-monthly-body">
+        <tr><td colspan="10" class="text-center text-muted py-3">載入中…</td></tr>
       </tbody>
-      <tfoot id="slitting-monthly-foot"></tfoot>
+      <tfoot id="sc-monthly-foot"></tfoot>
     </table>
     </div>
 
-    <!-- 日報（可折疊） -->
     <div class="daily-section">
-      <div class="small text-muted mt-3 mb-1" id="slitting-daily-title">▼ 日報</div>
+      <div class="small text-muted mt-3 mb-1" id="sc-daily-title">▼ 日報</div>
       <div class="table-responsive daily-table-wrap">
       <table class="table table-sm table-bordered align-middle mb-0">
         <thead class="table-primary text-center daily-thead">
           <tr>
             <th rowspan="2" style="width:55px;vertical-align:middle">日期</th>
             <th rowspan="2" style="width:45px;vertical-align:middle">機台<br>數量</th>
-            <th colspan="2" class="col-inv">庫存參考</th>
-            <th colspan="4">效率計算</th>
+            <th colspan="2" class="col-inv">分條 庫存</th>
+            <th colspan="4">分條 效率</th>
+            <th colspan="3">切勾</th>
           </tr>
           <tr>
             <th class="col-inv">捲數<small>J</small></th>
-            <th class="col-inv">捲數／時<small>J ÷ P</small></th>
+            <th class="col-inv">捲數/時<small>J÷P</small></th>
             <th>效率捲數<small>O</small></th>
             <th>加權工時<small>P</small></th>
-            <th>效率捲／時<small>O ÷ P</small></th>
-            <th>效率%<small>O ÷ P ÷ 6.3</small></th>
-          </tr>
-        </thead>
-        <tbody id="slitting-daily-body">
-          <tr><td colspan="8" class="text-center text-muted py-3">載入中…</td></tr>
-        </tbody>
-        <tfoot id="slitting-daily-foot"></tfoot>
-      </table>
-      </div>
-    </div><!-- /daily-section -->
-
-    <!-- 分條明細（欄位待定義） -->
-    <div class="detail-label">▼ 分條明細</div>
-    <div class="table-responsive">
-    <table class="table table-sm table-bordered align-middle mb-0" id="slitting-detail">
-      <thead class="table-light text-center">
-        <tr>
-          <!-- TODO: 待定義欄位 -->
-        </tr>
-      </thead>
-      <tbody id="slitting-detail-body">
-        <tr><td class="text-center text-muted py-2 small">（欄位待定義）</td></tr>
-      </tbody>
-    </table>
-    </div>
-
-  </div><!-- /tab-slitting -->
-
-  <!-- ── 焊接 Tab ── -->
-  <div id="tab-welding" style="display:none">
-
-    <div class="d-flex align-items-center mb-2 gap-3 flex-wrap">
-      <h6 class="mb-0 fw-bold" id="welding-year-label">載入中…</h6>
-      <span class="badge bg-secondary" id="welding-target-badge">目標 TBD</span>
-      <div class="ms-auto small">
-        <span class="me-2 eff-high">■ ≥100%</span>
-        <span class="me-2 eff-mid">■ 90–99%</span>
-        <span class="eff-low">■ &lt;90%</span>
-        <span class="ms-2" style="color:#b02020;font-weight:600">■ 假日</span>
-      </div>
-    </div>
-
-    <!-- 月報表 -->
-    <div class="table-responsive mb-1">
-    <table class="table table-sm table-bordered align-middle mb-0">
-      <thead class="table-dark text-center">
-        <tr>
-          <th style="width:55px">月份</th>
-          <th>效率換算<small>C</small></th>
-          <th>加權工時<small>P</small></th>
-          <th>效率換算/時<small>C ÷ P</small></th>
-          <th>效率%<small>C ÷ P ÷ 目標</small></th>
-        </tr>
-      </thead>
-      <tbody id="welding-monthly-body">
-        <tr><td colspan="5" class="text-center text-muted py-3">載入中…</td></tr>
-      </tbody>
-      <tfoot id="welding-monthly-foot"></tfoot>
-    </table>
-    </div>
-
-    <!-- 日報（可折疊） -->
-    <div class="daily-section">
-      <div class="small text-muted mt-3 mb-1" id="welding-daily-title">▼ 日報</div>
-      <div class="table-responsive daily-table-wrap">
-      <table class="table table-sm table-bordered align-middle mb-0">
-        <thead class="table-primary text-center daily-thead">
-          <tr>
-            <th style="width:55px">日期</th>
-            <th style="width:45px">機台<br>數量</th>
-            <th>效率換算<small>C</small></th>
-            <th>加權工時<small>P</small></th>
-            <th>效率換算/時<small>C ÷ P</small></th>
-            <th>效率%<small>C ÷ P ÷ 目標</small></th>
-          </tr>
-        </thead>
-        <tbody id="welding-daily-body">
-          <tr><td colspan="6" class="text-center text-muted py-3">載入中…</td></tr>
-        </tbody>
-        <tfoot id="welding-daily-foot"></tfoot>
-      </table>
-      </div>
-    </div><!-- /daily-section -->
-
-    <!-- 焊接明細（欄位待定義） -->
-    <div class="detail-label">▼ 焊接明細</div>
-    <div class="table-responsive">
-    <table class="table table-sm table-bordered align-middle mb-0" id="welding-detail">
-      <thead class="table-light text-center">
-        <tr>
-          <!-- TODO: 待定義欄位 -->
-        </tr>
-      </thead>
-      <tbody id="welding-detail-body">
-        <tr><td class="text-center text-muted py-2 small">（欄位待定義）</td></tr>
-      </tbody>
-    </table>
-    </div>
-
-  </div>
-
-  <!-- ── 褙膠 Tab ── -->
-  <div id="tab-backing" style="display:none">
-
-    <div class="d-flex align-items-center mb-2 gap-3 flex-wrap">
-      <h6 class="mb-0 fw-bold" id="backing-year-label">載入中…</h6>
-      <span class="badge bg-secondary">目標 55 卷／時</span>
-      <div class="ms-auto small">
-        <span class="me-2 eff-high">■ ≥100%</span>
-        <span class="me-2 eff-mid">■ 90–99%</span>
-        <span class="eff-low">■ &lt;90%</span>
-        <span class="ms-2" style="color:#b02020;font-weight:600">■ 假日</span>
-      </div>
-    </div>
-
-    <!-- 月報表 -->
-    <div class="table-responsive mb-1">
-    <table class="table table-sm table-bordered align-middle mb-0">
-      <thead class="table-dark text-center">
-        <tr>
-          <th style="width:55px">月份</th>
-          <th>效率卷數<small>N</small></th>
-          <th>加權工時<small>O</small></th>
-          <th>效率卷／時<small>N ÷ O</small></th>
-          <th>效率%<small>N ÷ O ÷ 55</small></th>
-        </tr>
-      </thead>
-      <tbody id="backing-monthly-body">
-        <tr><td colspan="5" class="text-center text-muted py-3">載入中…</td></tr>
-      </tbody>
-      <tfoot id="backing-monthly-foot"></tfoot>
-    </table>
-    </div>
-
-    <!-- 日報（可折疊） -->
-    <div class="daily-section">
-      <div class="small text-muted mt-3 mb-1" id="backing-daily-title">▼ 日報</div>
-      <div class="table-responsive daily-table-wrap">
-      <table class="table table-sm table-bordered align-middle mb-0">
-        <thead class="table-primary text-center daily-thead">
-          <tr>
-            <th style="width:55px">日期</th>
-            <th style="width:45px">機台<br>數量</th>
-            <th>效率卷數<small>N</small></th>
-            <th>加權工時<small>O</small></th>
-            <th>效率卷／時<small>N ÷ O</small></th>
-            <th>效率%<small>N ÷ O ÷ 55</small></th>
-          </tr>
-        </thead>
-        <tbody id="backing-daily-body">
-          <tr><td colspan="6" class="text-center text-muted py-3">載入中…</td></tr>
-        </tbody>
-        <tfoot id="backing-daily-foot"></tfoot>
-      </table>
-      </div>
-    </div><!-- /daily-section -->
-
-    <!-- 褙膠明細（欄位待定義） -->
-    <div class="detail-label">▼ 褙膠明細</div>
-    <div class="table-responsive">
-    <table class="table table-sm table-bordered align-middle mb-0" id="backing-detail">
-      <thead class="table-light text-center">
-        <tr>
-          <!-- TODO: 待定義欄位 -->
-        </tr>
-      </thead>
-      <tbody id="backing-detail-body">
-        <tr><td class="text-center text-muted py-2 small">（欄位待定義）</td></tr>
-      </tbody>
-    </table>
-    </div>
-
-  </div>
-
-  <!-- ── 切勾 Tab ── -->
-  <div id="tab-cutting" style="display:none">
-
-    <div class="d-flex align-items-center mb-2 gap-3 flex-wrap">
-      <h6 class="mb-0 fw-bold" id="cutting-year-label">載入中…</h6>
-    </div>
-
-    <!-- 月報表 -->
-    <div class="table-responsive mb-1">
-    <table class="table table-sm table-bordered align-middle mb-0">
-      <thead class="table-dark text-center">
-        <tr>
-          <th style="width:80px">月份</th>
-          <th>切勾數量</th>
-          <th>工作時數</th>
-          <th>機器數</th>
-        </tr>
-      </thead>
-      <tbody id="cutting-monthly-body">
-        <tr><td colspan="4" class="text-center text-muted py-3">載入中…</td></tr>
-      </tbody>
-      <tfoot id="cutting-monthly-foot"></tfoot>
-    </table>
-    </div>
-
-    <!-- 日報（可折疊） -->
-    <div class="daily-section">
-      <div class="small text-muted mt-3 mb-1" id="cutting-daily-title">▼ 日報</div>
-      <div class="table-responsive daily-table-wrap">
-      <table class="table table-sm table-bordered align-middle mb-0">
-        <thead class="table-primary text-center daily-thead">
-          <tr>
-            <th style="width:80px">日期</th>
-            <th>切勾數量</th>
-            <th>工作時數</th>
+            <th>效率捲/時<small>O÷P</small></th>
+            <th>效率%</th>
+            <th>數量</th>
+            <th>工時</th>
             <th>機器數</th>
           </tr>
         </thead>
-        <tbody id="cutting-daily-body">
-          <tr><td colspan="4" class="text-center text-muted py-3">載入中…</td></tr>
+        <tbody id="sc-daily-body">
+          <tr><td colspan="11" class="text-center text-muted py-3">載入中…</td></tr>
         </tbody>
-        <tfoot id="cutting-daily-foot"></tfoot>
+        <tfoot id="sc-daily-foot"></tfoot>
       </table>
       </div>
-    </div><!-- /daily-section -->
-
-    <!-- 切勾明細（欄位待定義） -->
-    <div class="detail-label">▼ 切勾明細</div>
-    <div class="table-responsive">
-    <table class="table table-sm table-bordered align-middle mb-0" id="cutting-detail">
-      <thead class="table-light text-center">
-        <tr>
-          <!-- TODO: 待定義欄位 -->
-        </tr>
-      </thead>
-      <tbody id="cutting-detail-body">
-        <tr><td class="text-center text-muted py-2 small">（欄位待定義）</td></tr>
-      </tbody>
-    </table>
     </div>
 
-  </div><!-- /tab-cutting -->
+  </div><!-- /tab-sc -->
 
-  <!-- ── 裁片 Tab ── -->
-  <div id="tab-process" style="display:none">
+  <!-- ── 焊接/褙膠/裁片 Tab ── -->
+  <div id="tab-wbp" style="display:none">
 
     <div class="d-flex align-items-center mb-2 gap-3 flex-wrap">
-      <h6 class="mb-0 fw-bold" id="process-year-label">載入中…</h6>
+      <h6 class="mb-0 fw-bold" id="wbp-year-label">載入中…</h6>
+      <span class="badge bg-secondary" id="wbp-weld-badge">焊接目標 545</span>
+      <span class="badge bg-secondary">褙膠目標 55 卷／時</span>
+      <div class="ms-auto small">
+        <span class="me-2 eff-high">■ ≥100%</span>
+        <span class="me-2 eff-mid">■ 90–99%</span>
+        <span class="eff-low">■ &lt;90%</span>
+        <span class="ms-2" style="color:#b02020;font-weight:600">■ 假日</span>
+      </div>
     </div>
 
-    <!-- 月報表 -->
     <div class="table-responsive mb-1">
     <table class="table table-sm table-bordered align-middle mb-0">
       <thead class="table-dark text-center">
         <tr>
-          <th style="width:80px">月份</th>
-          <th>有效時數</th>
-          <th>裁切工時</th>
-          <th>效率</th>
+          <th rowspan="2" style="width:55px;vertical-align:middle">月份</th>
+          <th colspan="4" style="background:#1a3a5c!important">超音波焊接</th>
+          <th colspan="4" style="background:#1a4a2e!important">自黏褙膠</th>
+          <th colspan="3" style="background:#4a1a1a!important">裁片</th>
+        </tr>
+        <tr>
+          <th style="background:#1a3a5c!important">效率換算<small>C</small></th>
+          <th style="background:#1a3a5c!important">加權工時<small>P</small></th>
+          <th style="background:#1a3a5c!important">換算/時<small>C÷P</small></th>
+          <th style="background:#1a3a5c!important">效率%</th>
+          <th style="background:#1a4a2e!important">效率卷數<small>N</small></th>
+          <th style="background:#1a4a2e!important">加權工時<small>O</small></th>
+          <th style="background:#1a4a2e!important">卷/時<small>N÷O</small></th>
+          <th style="background:#1a4a2e!important">效率%</th>
+          <th style="background:#4a1a1a!important">有效時數</th>
+          <th style="background:#4a1a1a!important">裁切工時</th>
+          <th style="background:#4a1a1a!important">效率%</th>
         </tr>
       </thead>
-      <tbody id="process-monthly-body">
-        <tr><td colspan="4" class="text-center text-muted py-3">載入中…</td></tr>
+      <tbody id="wbp-monthly-body">
+        <tr><td colspan="12" class="text-center text-muted py-3">載入中…</td></tr>
       </tbody>
-      <tfoot id="process-monthly-foot"></tfoot>
+      <tfoot id="wbp-monthly-foot"></tfoot>
     </table>
     </div>
 
-    <!-- 日報（可折疊） -->
     <div class="daily-section">
-      <div class="small text-muted mt-3 mb-1" id="process-daily-title">▼ 日報</div>
+      <div class="small text-muted mt-3 mb-1" id="wbp-daily-title">▼ 日報</div>
       <div class="table-responsive daily-table-wrap">
       <table class="table table-sm table-bordered align-middle mb-0">
         <thead class="table-primary text-center daily-thead">
           <tr>
-            <th style="width:80px">日期</th>
+            <th rowspan="2" style="width:55px;vertical-align:middle">日期</th>
+            <th colspan="4">超音波焊接</th>
+            <th colspan="4">自黏褙膠</th>
+            <th colspan="3">裁片</th>
+          </tr>
+          <tr>
+            <th>效率換算<small>C</small></th>
+            <th>加權工時<small>P</small></th>
+            <th>換算/時</th>
+            <th>效率%</th>
+            <th>效率卷數<small>N</small></th>
+            <th>加權工時<small>O</small></th>
+            <th>卷/時</th>
+            <th>效率%</th>
             <th>有效時數</th>
             <th>裁切工時</th>
-            <th>效率</th>
+            <th>效率%</th>
           </tr>
         </thead>
-        <tbody id="process-daily-body">
-          <tr><td colspan="4" class="text-center text-muted py-3">載入中…</td></tr>
+        <tbody id="wbp-daily-body">
+          <tr><td colspan="12" class="text-center text-muted py-3">載入中…</td></tr>
         </tbody>
+        <tfoot id="wbp-daily-foot"></tfoot>
       </table>
       </div>
-    </div><!-- /daily-section -->
-
-    <!-- 裁片明細（欄位待定義） -->
-    <div class="detail-label">▼ 裁片明細</div>
-    <div class="table-responsive">
-    <table class="table table-sm table-bordered align-middle mb-0" id="process-detail">
-      <thead class="table-light text-center">
-        <tr>
-          <!-- TODO: 待定義欄位 -->
-        </tr>
-      </thead>
-      <tbody id="process-detail-body">
-        <tr><td class="text-center text-muted py-2 small">（欄位待定義）</td></tr>
-      </tbody>
-    </table>
     </div>
 
-  </div><!-- /tab-process -->
+  </div><!-- /tab-wbp -->
 
 </div><!-- /container-fluid -->
 
@@ -449,8 +237,6 @@ const MONTH_NAMES = ['1月','2月','3月','4月','5月','6月','7月','8月','9�
 const TARGET_SLIT = 6.3;
 const TARGET_BACK = 55;
 const TARGET_WELD = 545;
-
-const charts = {};
 
 // ── Navbar 高度 → CSS var（sticky daily headers 用）────────────────────────────
 window.addEventListener('load', () => {
@@ -468,64 +254,79 @@ function toggleDailyAll(btn) {
 
 // ── Tab 切換 ──────────────────────────────────────────────────────────────────
 function switchTab(system, btn) {
-  ['slitting','welding','backing','cutting','process'].forEach(s => {
+  ['sc','wbp'].forEach(s => {
     document.getElementById(`tab-${s}`).style.display = s === system ? '' : 'none';
   });
   document.querySelectorAll('#reportTabs .nav-link').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
 }
 
-// ── 分條報表 ─────────────────────────────────────────────────────────────────
-function loadSlittingReport() {
-  jsonpCall(GAS_URL + '?action=getSlittingReport', renderSlittingReport);
-}
-
 function fmt0(v) { return Math.round(v).toLocaleString(); }
 function fmt2(v) { return v.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}); }
 
-function renderSlittingReport(data) {
-  const { monthly, daily, machineCounts = {}, currentMonth, currentYear } = data;
+// ── Tab 1：分條/切勾 ──────────────────────────────────────────────────────────
+const _tab1 = { slitting: null, cutting: null };
 
-  document.getElementById('slitting-year-label').textContent = `${currentYear} 年分條效率月報`;
-  document.getElementById('slitting-daily-title').textContent =
-    `▼ ${currentYear}年 ${currentMonth}月 日報`;
+function loadTab1() {
+  jsonpCall(GAS_URL + '?action=getSlittingReport', d => { _tab1.slitting = d; _tryRenderTab1(); });
+  jsonpCall(GAS_URL + '?action=getCuttingReport',  d => { _tab1.cutting  = d; _tryRenderTab1(); });
+}
+
+function _tryRenderTab1() {
+  if (!_tab1.slitting || !_tab1.cutting) return;
+  renderTab1(_tab1.slitting, _tab1.cutting);
+}
+
+function renderTab1(slit, cut) {
+  const { monthly: sm, daily: sd, machineCounts = {}, currentMonth, currentYear } = slit;
+  const { monthly: cm, daily: cd } = cut;
+  const cyear  = currentYear;
+  const cmonth = currentMonth;
+
+  document.getElementById('sc-year-label').textContent  = `${cyear} 年分條／切勾月報`;
+  document.getElementById('sc-daily-title').textContent = `▼ ${cyear}年 ${cmonth}月 日報`;
+
+  // cutting monthly map: month number → row
+  const cutMonthMap = {};
+  cm.forEach(m => { cutMonthMap[Number(m.month.split('-')[1])] = m; });
 
   // 月報 rows
-  let ytdR = 0, ytdE = 0, ytdH = 0, ytdOK = false;
-  const mrows = monthly.map(m => {
-    if (!m.hasData) {
-      return `<tr class="no-data text-center month-row" onclick="selectSlittingMonth(this,${m.month})">
-        <td class="text-dark fw-semibold">${m.month} 月</td>
+  let ytdR = 0, ytdE = 0, ytdH = 0, ytdCQ = 0, ytdCH = 0, ytdCOK = false, ytdOK = false;
+  const mrows = sm.map(m => {
+    const c = cutMonthMap[m.month] || null;
+    if (!m.hasData && !c) {
+      return `<tr class="no-data text-center"><td class="text-dark fw-semibold">${m.month} 月</td>
         <td class="col-inv">—</td><td class="col-inv">—</td>
         <td>—</td><td>—</td><td>—</td><td>—</td>
-      </tr>`;
+        <td>—</td><td>—</td><td>—</td></tr>`;
     }
-    ytdR += m.rolls; ytdE += m.effRolls; ytdH += m.weightedHours; ytdOK = true;
-    const jPerP = m.weightedHours > 0 ? m.rolls / m.weightedHours : 0;
-    const oPerP = m.weightedHours > 0 ? m.effRolls / m.weightedHours : 0;
-    const eff   = oPerP / TARGET_SLIT;
-    const cls   = eff >= 1 ? 'eff-high' : eff >= 0.9 ? 'eff-mid' : 'eff-low';
-    const act   = m.month === currentMonth ? ' active' : '';
-    return `<tr class="text-center month-row${act}" onclick="selectSlittingMonth(this,${m.month})">
+    const jPerP = m.hasData && m.weightedHours > 0 ? m.rolls / m.weightedHours : null;
+    const oPerP = m.hasData && m.weightedHours > 0 ? m.effRolls / m.weightedHours : null;
+    const eff   = oPerP !== null ? oPerP / TARGET_SLIT : null;
+    const cls   = eff === null ? '' : eff >= 1 ? 'eff-high' : eff >= 0.9 ? 'eff-mid' : 'eff-low';
+    if (m.hasData) { ytdR += m.rolls; ytdE += m.effRolls; ytdH += m.weightedHours; ytdOK = true; }
+    if (c) { ytdCQ += c.totalCount; ytdCH += c.totalWorkH; ytdCOK = true; }
+    return `<tr class="text-center">
       <td class="fw-semibold">${m.month} 月</td>
-      <td class="text-end col-inv">${fmt0(m.rolls)}</td>
-      <td class="text-end col-inv">${jPerP.toFixed(2)}</td>
-      <td class="text-end">${fmt2(m.effRolls)}</td>
-      <td class="text-end">${fmt2(m.weightedHours)}</td>
-      <td class="text-end">${oPerP.toFixed(2)}</td>
-      <td class="${cls}">${(eff * 100).toFixed(1)}%</td>
+      <td class="text-end col-inv">${m.hasData ? fmt0(m.rolls) : '—'}</td>
+      <td class="text-end col-inv">${jPerP !== null ? jPerP.toFixed(2) : '—'}</td>
+      <td class="text-end">${m.hasData ? fmt2(m.effRolls) : '—'}</td>
+      <td class="text-end">${m.hasData ? fmt2(m.weightedHours) : '—'}</td>
+      <td class="text-end">${oPerP !== null ? oPerP.toFixed(2) : '—'}</td>
+      <td class="${cls}">${eff !== null ? (eff * 100).toFixed(1) + '%' : '—'}</td>
+      <td class="text-end">${c ? c.totalCount.toLocaleString() : '—'}</td>
+      <td class="text-end">${c ? fmt2(c.totalWorkH) : '—'}</td>
+      <td class="text-end">${c ? c.totalMachines : '—'}</td>
     </tr>`;
   });
-  document.getElementById('slitting-monthly-body').innerHTML = mrows.join('');
+  document.getElementById('sc-monthly-body').innerHTML = mrows.join('');
 
-  // 月報 tfoot（年度累計）
-  const mfoot = document.getElementById('slitting-monthly-foot');
+  // 月報 tfoot
   if (ytdOK && ytdH > 0) {
-    const jPerP = ytdR / ytdH;
-    const oPerP = ytdE / ytdH;
-    const eff   = oPerP / TARGET_SLIT;
-    const cls   = eff >= 1 ? 'eff-high' : eff >= 0.9 ? 'eff-mid' : 'eff-low';
-    mfoot.innerHTML = `<tr class="text-center">
+    const jPerP = ytdR / ytdH, oPerP = ytdE / ytdH;
+    const eff = oPerP / TARGET_SLIT;
+    const cls = eff >= 1 ? 'eff-high' : eff >= 0.9 ? 'eff-mid' : 'eff-low';
+    document.getElementById('sc-monthly-foot').innerHTML = `<tr class="text-center">
       <td>年度累計</td>
       <td class="text-end col-inv">${fmt0(ytdR)}</td>
       <td class="text-end col-inv">${jPerP.toFixed(2)}</td>
@@ -533,430 +334,269 @@ function renderSlittingReport(data) {
       <td class="text-end">${fmt2(ytdH)}</td>
       <td class="text-end">${oPerP.toFixed(2)}</td>
       <td class="${cls}">${(eff * 100).toFixed(1)}%</td>
+      <td class="text-end">${ytdCOK ? ytdCQ.toLocaleString() : '—'}</td>
+      <td class="text-end">${ytdCOK ? fmt2(ytdCH) : '—'}</td>
+      <td class="text-end">—</td>
     </tr>`;
   }
 
-  // 日報 rows（當月 1 到 daysInMonth 每天都顯示）
-  const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
-  const dMap = {};
-  daily.forEach(d => { dMap[d.day] = d; });
+  // 日報 rows
+  const daysInMonth = new Date(cyear, cmonth, 0).getDate();
+  const slitDayMap = {};
+  sd.forEach(d => { slitDayMap[d.day] = d; });
+  const cutDayMap = {};
+  cd.forEach(d => { cutDayMap[Number(d.date.split('-')[2])] = d; });
 
   const today = new Date();
-  const todayYear = today.getFullYear();
-  const todayMonth = today.getMonth() + 1;
-  const todayDay = today.getDate();
-
-  let dR = 0, dE = 0, dH = 0, dOK = false;
+  let dR = 0, dE = 0, dH = 0, dCQ = 0, dCH = 0, dCOK = false, dOK = false;
   const drows = [];
+
   for (let day = 1; day <= daysInMonth; day++) {
-    const dd = dMap[day];
-    const dayKey = `${String(currentMonth).padStart(2,'0')}/${String(day).padStart(2,'0')}`;
+    const sl = slitDayMap[day];
+    const cu = cutDayMap[day];
+    const dayKey  = `${String(cmonth).padStart(2,'0')}/${String(day).padStart(2,'0')}`;
     const machines = machineCounts[dayKey] || 0;
+    const dateObj  = new Date(cyear, cmonth - 1, day);
+    const isToday  = cyear === today.getFullYear() && cmonth === today.getMonth()+1 && day === today.getDate();
+    const isPast   = !isToday && (cyear < today.getFullYear() ||
+      (cyear === today.getFullYear() && cmonth < today.getMonth()+1) ||
+      (cyear === today.getFullYear() && cmonth === today.getMonth()+1 && day < today.getDate()));
+    const isHoliday = !sl && !cu && (dateObj.getDay() === 0 || isPast);
 
-    const dateObj  = new Date(currentYear, currentMonth - 1, day);
-    const isSunday = dateObj.getDay() === 0;
-    const isToday  = currentYear === todayYear && currentMonth === todayMonth && day === todayDay;
-    const isPast   = !isToday && (
-      currentYear < todayYear ||
-      (currentYear === todayYear && currentMonth < todayMonth) ||
-      (currentYear === todayYear && currentMonth === todayMonth && day < todayDay)
-    );
-    const isHoliday = !dd && (isSunday || isPast);
-
-    if (dd) {
-      dR += dd.rolls; dE += dd.effRolls; dH += dd.weightedHours; dOK = true;
-      const jPerP = dd.weightedHours > 0 ? dd.rolls / dd.weightedHours : 0;
-      const oPerP = dd.weightedHours > 0 ? dd.effRolls / dd.weightedHours : 0;
-      const eff   = oPerP / TARGET_SLIT;
-      const cls   = eff >= 1 ? 'eff-high' : eff >= 0.9 ? 'eff-mid' : 'eff-low';
+    if (sl || cu) {
+      if (sl) { dR += sl.rolls; dE += sl.effRolls; dH += sl.weightedHours; dOK = true; }
+      if (cu) { dCQ += cu.count; dCH += cu.workH; dCOK = true; }
+      const jPerP = sl && sl.weightedHours > 0 ? sl.rolls / sl.weightedHours : null;
+      const oPerP = sl && sl.weightedHours > 0 ? sl.effRolls / sl.weightedHours : null;
+      const eff   = oPerP !== null ? oPerP / TARGET_SLIT : null;
+      const cls   = eff === null ? '' : eff >= 1 ? 'eff-high' : eff >= 0.9 ? 'eff-mid' : 'eff-low';
       drows.push(`<tr>
-        <td class="text-center fw-semibold">${currentMonth}/${day}</td>
+        <td class="text-center fw-semibold">${cmonth}/${day}</td>
         <td class="text-center">${machines || '—'}</td>
-        <td class="text-end col-inv">${fmt0(dd.rolls)}</td>
-        <td class="text-end col-inv">${jPerP.toFixed(2)}</td>
-        <td class="text-end">${fmt2(dd.effRolls)}</td>
-        <td class="text-end">${fmt2(dd.weightedHours)}</td>
-        <td class="text-end">${oPerP.toFixed(2)}</td>
-        <td class="text-center ${cls}">${(eff * 100).toFixed(1)}%</td>
+        <td class="text-end col-inv">${sl ? fmt0(sl.rolls) : '—'}</td>
+        <td class="text-end col-inv">${jPerP !== null ? jPerP.toFixed(2) : '—'}</td>
+        <td class="text-end">${sl ? fmt2(sl.effRolls) : '—'}</td>
+        <td class="text-end">${sl ? fmt2(sl.weightedHours) : '—'}</td>
+        <td class="text-end">${oPerP !== null ? oPerP.toFixed(2) : '—'}</td>
+        <td class="text-center ${cls}">${eff !== null ? (eff*100).toFixed(1)+'%' : '—'}</td>
+        <td class="text-end">${cu ? cu.count.toLocaleString() : '—'}</td>
+        <td class="text-end">${cu ? fmt2(cu.workH) : '—'}</td>
+        <td class="text-end">${cu ? cu.machines : '—'}</td>
       </tr>`);
     } else if (isHoliday) {
       drows.push(`<tr class="day-holiday text-center">
-        <td class="fw-semibold">${currentMonth}/${day}</td><td>—</td>
+        <td class="fw-semibold">${cmonth}/${day}</td><td>—</td>
         <td class="col-inv">—</td><td class="col-inv">—</td>
         <td>—</td><td>—</td><td>—</td><td>—</td>
+        <td>—</td><td>—</td><td>—</td>
       </tr>`);
     } else {
       drows.push(`<tr class="no-data text-center">
-        <td class="text-dark fw-semibold">${currentMonth}/${day}</td><td>—</td>
+        <td class="text-dark fw-semibold">${cmonth}/${day}</td><td>—</td>
         <td class="col-inv">—</td><td class="col-inv">—</td>
         <td>—</td><td>—</td><td>—</td><td>—</td>
+        <td>—</td><td>—</td><td>—</td>
       </tr>`);
     }
   }
-  document.getElementById('slitting-daily-body').innerHTML = drows.join('');
+  document.getElementById('sc-daily-body').innerHTML = drows.join('');
 
-  // 日報 tfoot（月合計）
-  const dfoot = document.getElementById('slitting-daily-foot');
+  // 日報 tfoot
   if (dOK && dH > 0) {
-    const jPerP = dR / dH;
-    const oPerP = dE / dH;
-    const eff   = oPerP / TARGET_SLIT;
-    const cls   = eff >= 1 ? 'eff-high' : eff >= 0.9 ? 'eff-mid' : 'eff-low';
-    dfoot.innerHTML = `<tr class="text-center">
-      <td>月合計</td><td class="text-center">—</td>
+    const jPerP = dR / dH, oPerP = dE / dH;
+    const eff = oPerP / TARGET_SLIT;
+    const cls = eff >= 1 ? 'eff-high' : eff >= 0.9 ? 'eff-mid' : 'eff-low';
+    document.getElementById('sc-daily-foot').innerHTML = `<tr class="text-center">
+      <td>月合計</td><td>—</td>
       <td class="text-end col-inv">${fmt0(dR)}</td>
       <td class="text-end col-inv">${jPerP.toFixed(2)}</td>
       <td class="text-end">${fmt2(dE)}</td>
       <td class="text-end">${fmt2(dH)}</td>
       <td class="text-end">${oPerP.toFixed(2)}</td>
-      <td class="${cls}">${(eff * 100).toFixed(1)}%</td>
+      <td class="${cls}">${(eff*100).toFixed(1)}%</td>
+      <td class="text-end">${dCOK ? dCQ.toLocaleString() : '—'}</td>
+      <td class="text-end">${dCOK ? fmt2(dCH) : '—'}</td>
+      <td class="text-end">—</td>
     </tr>`;
   }
 }
 
-function selectSlittingMonth(el, m) {
-  document.querySelectorAll('#tab-slitting .month-row').forEach(r => r.classList.remove('active'));
-  el.classList.add('active');
+// ── Tab 2：焊接/褙膠/裁片 ─────────────────────────────────────────────────────
+const _tab2 = { welding: null, backing: null, process: null };
+
+function loadTab2() {
+  jsonpCall(GAS_URL + '?action=getWeldingReport', d => { _tab2.welding = d; _tryRenderTab2(); });
+  jsonpCall(GAS_URL + '?action=getBackingReport', d => { _tab2.backing = d; _tryRenderTab2(); });
+  jsonpCall(GAS_URL + '?action=getProcessReport', d => { _tab2.process = d; _tryRenderTab2(); });
 }
 
-// ── 褙膠報表 ─────────────────────────────────────────────────────────────────
-function loadBackingReport() {
-  jsonpCall(GAS_URL + '?action=getBackingReport', renderBackingReport);
+function _tryRenderTab2() {
+  if (!_tab2.welding || !_tab2.backing || !_tab2.process) return;
+  renderTab2(_tab2.welding, _tab2.backing, _tab2.process);
 }
 
-function renderBackingReport(data) {
-  const { monthly, daily, machineCounts = {}, currentMonth, currentYear } = data;
+function renderTab2(weld, back, proc) {
+  const { monthly: wm, daily: wd, currentMonth, currentYear } = weld;
+  const { monthly: bm, daily: bd } = back;
+  const { monthly: pm, daily: pd } = proc;
+  const cyear  = currentYear;
+  const cmonth = currentMonth;
 
-  document.getElementById('backing-year-label').textContent = `${currentYear} 年褙膠效率月報`;
-  document.getElementById('backing-daily-title').textContent =
-    `▼ ${currentYear}年 ${currentMonth}月 日報`;
+  document.getElementById('wbp-year-label').textContent  = `${cyear} 年焊接／褙膠／裁片月報`;
+  document.getElementById('wbp-daily-title').textContent = `▼ ${cyear}年 ${cmonth}月 日報`;
+  if (TARGET_WELD > 0) document.getElementById('wbp-weld-badge').textContent = `焊接目標 ${TARGET_WELD}`;
 
-  // 月報 rows
-  let ytdE = 0, ytdH = 0, ytdOK = false;
-  const mrows = monthly.map(m => {
-    if (!m.hasData) {
-      return `<tr class="no-data text-center month-row" onclick="selectBackingMonth(this,${m.month})">
-        <td class="text-dark fw-semibold">${m.month} 月</td>
-        <td>—</td><td>—</td><td>—</td><td>—</td>
-      </tr>`;
-    }
-    ytdE += m.effRolls; ytdH += m.weightedHours; ytdOK = true;
-    const nPerO = m.weightedHours > 0 ? m.effRolls / m.weightedHours : 0;
-    const eff   = nPerO / TARGET_BACK;
-    const cls   = eff >= 1 ? 'eff-high' : eff >= 0.9 ? 'eff-mid' : 'eff-low';
-    const act   = m.month === currentMonth ? ' active' : '';
-    return `<tr class="text-center month-row${act}" onclick="selectBackingMonth(this,${m.month})">
-      <td class="fw-semibold">${m.month} 月</td>
-      <td class="text-end">${fmt2(m.effRolls)}</td>
-      <td class="text-end">${fmt2(m.weightedHours)}</td>
-      <td class="text-end">${nPerO.toFixed(2)}</td>
-      <td class="${cls}">${(eff * 100).toFixed(1)}%</td>
-    </tr>`;
-  });
-  document.getElementById('backing-monthly-body').innerHTML = mrows.join('');
-
-  // 月報 tfoot
-  const mfoot = document.getElementById('backing-monthly-foot');
-  if (ytdOK && ytdH > 0) {
-    const nPerO = ytdE / ytdH;
-    const eff   = nPerO / TARGET_BACK;
-    const cls   = eff >= 1 ? 'eff-high' : eff >= 0.9 ? 'eff-mid' : 'eff-low';
-    mfoot.innerHTML = `<tr class="text-center">
-      <td>年度累計</td>
-      <td class="text-end">${fmt2(ytdE)}</td>
-      <td class="text-end">${fmt2(ytdH)}</td>
-      <td class="text-end">${nPerO.toFixed(2)}</td>
-      <td class="${cls}">${(eff * 100).toFixed(1)}%</td>
-    </tr>`;
-  }
-
-  // 日報 rows
-  const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
-  const dMap = {};
-  daily.forEach(d => { dMap[d.day] = d; });
-
-  const today = new Date();
-  const todayYear = today.getFullYear();
-  const todayMonth = today.getMonth() + 1;
-  const todayDay = today.getDate();
-
-  let dE = 0, dH = 0, dOK = false;
-  const drows = [];
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dd = dMap[day];
-    const dayKey  = `${String(currentMonth).padStart(2,'0')}/${String(day).padStart(2,'0')}`;
-    const machines = machineCounts[dayKey] || 0;
-    const dateObj  = new Date(currentYear, currentMonth - 1, day);
-    const isSunday = dateObj.getDay() === 0;
-    const isToday  = currentYear === todayYear && currentMonth === todayMonth && day === todayDay;
-    const isPast   = !isToday && (
-      currentYear < todayYear ||
-      (currentYear === todayYear && currentMonth < todayMonth) ||
-      (currentYear === todayYear && currentMonth === todayMonth && day < todayDay)
-    );
-    const isHoliday = !dd && (isSunday || isPast);
-
-    if (dd) {
-      dE += dd.effRolls; dH += dd.weightedHours; dOK = true;
-      const nPerO = dd.weightedHours > 0 ? dd.effRolls / dd.weightedHours : 0;
-      const eff   = nPerO / TARGET_BACK;
-      const cls   = eff >= 1 ? 'eff-high' : eff >= 0.9 ? 'eff-mid' : 'eff-low';
-      drows.push(`<tr>
-        <td class="text-center fw-semibold">${currentMonth}/${day}</td>
-        <td class="text-center">${machines || '—'}</td>
-        <td class="text-end">${fmt2(dd.effRolls)}</td>
-        <td class="text-end">${fmt2(dd.weightedHours)}</td>
-        <td class="text-end">${nPerO.toFixed(2)}</td>
-        <td class="text-center ${cls}">${(eff * 100).toFixed(1)}%</td>
-      </tr>`);
-    } else if (isHoliday) {
-      drows.push(`<tr class="day-holiday text-center">
-        <td class="fw-semibold">${currentMonth}/${day}</td>
-        <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
-      </tr>`);
-    } else {
-      drows.push(`<tr class="no-data text-center">
-        <td class="text-dark fw-semibold">${currentMonth}/${day}</td>
-        <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
-      </tr>`);
-    }
-  }
-  document.getElementById('backing-daily-body').innerHTML = drows.join('');
-
-  // 日報 tfoot
-  const dfoot = document.getElementById('backing-daily-foot');
-  if (dOK && dH > 0) {
-    const nPerO = dE / dH;
-    const eff   = nPerO / TARGET_BACK;
-    const cls   = eff >= 1 ? 'eff-high' : eff >= 0.9 ? 'eff-mid' : 'eff-low';
-    dfoot.innerHTML = `<tr class="text-center">
-      <td>月合計</td><td>—</td>
-      <td class="text-end">${fmt2(dE)}</td>
-      <td class="text-end">${fmt2(dH)}</td>
-      <td class="text-end">${nPerO.toFixed(2)}</td>
-      <td class="${cls}">${(eff * 100).toFixed(1)}%</td>
-    </tr>`;
-  }
-}
-
-function selectBackingMonth(el, m) {
-  document.querySelectorAll('#tab-backing .month-row').forEach(r => r.classList.remove('active'));
-  el.classList.add('active');
-}
-
-// ── 焊接報表 ─────────────────────────────────────────────────────────────────
-function loadWeldingReport() {
-  jsonpCall(GAS_URL + '?action=getWeldingReport', renderWeldingReport);
-}
-
-function renderWeldingReport(data) {
-  const { monthly, daily, machineCounts = {}, currentMonth, currentYear } = data;
-
-  document.getElementById('welding-year-label').textContent = `${currentYear} 年焊接效率月報`;
-  document.getElementById('welding-daily-title').textContent =
-    `▼ ${currentYear}年 ${currentMonth}月 日報`;
-  if (TARGET_WELD > 0) {
-    document.getElementById('welding-target-badge').textContent = `目標 ${TARGET_WELD}`;
-  }
+  const backMonthMap = {};
+  bm.forEach(m => { backMonthMap[m.month] = m; });
+  const procMonthMap = {};
+  pm.forEach(m => { procMonthMap[Number(m.month.split('-')[1])] = m; });
 
   function weldPct(cPerP) {
     if (!TARGET_WELD) return { str: '—', cls: '' };
     const eff = cPerP / TARGET_WELD;
-    return {
-      str: `${(eff * 100).toFixed(1)}%`,
-      cls: eff >= 1 ? 'eff-high' : eff >= 0.9 ? 'eff-mid' : 'eff-low'
-    };
+    return { str: `${(eff*100).toFixed(1)}%`, cls: eff >= 1 ? 'eff-high' : eff >= 0.9 ? 'eff-mid' : 'eff-low' };
   }
 
   // 月報 rows
-  let ytdC = 0, ytdH = 0, ytdOK = false;
-  const mrows = monthly.map(m => {
-    if (!m.hasData) {
-      return `<tr class="no-data text-center month-row" onclick="selectWeldingMonth(this,${m.month})">
-        <td class="text-dark fw-semibold">${m.month} 月</td>
+  let ytdWC = 0, ytdWH = 0, ytdBN = 0, ytdBH = 0, ytdOK = false;
+  const mrows = wm.map(m => {
+    const b = backMonthMap[m.month];
+    const p = procMonthMap[m.month];
+    if (!m.hasData && !b?.hasData && !p) {
+      return `<tr class="no-data text-center"><td class="text-dark fw-semibold">${m.month} 月</td>
         <td>—</td><td>—</td><td>—</td><td>—</td>
-      </tr>`;
+        <td>—</td><td>—</td><td>—</td><td>—</td>
+        <td>—</td><td>—</td><td>—</td></tr>`;
     }
-    ytdC += m.effScore; ytdH += m.weightedHours; ytdOK = true;
-    const cPerP = m.weightedHours > 0 ? m.effScore / m.weightedHours : 0;
-    const pct   = weldPct(cPerP);
-    const act   = m.month === currentMonth ? ' active' : '';
-    return `<tr class="text-center month-row${act}" onclick="selectWeldingMonth(this,${m.month})">
+    const wCPerP = m.hasData && m.weightedHours > 0 ? m.effScore / m.weightedHours : null;
+    const wPct   = wCPerP !== null ? weldPct(wCPerP) : { str: '—', cls: '' };
+    const bNPerO = b?.hasData && b.weightedHours > 0 ? b.effRolls / b.weightedHours : null;
+    const bEff   = bNPerO !== null ? bNPerO / TARGET_BACK : null;
+    const bCls   = bEff === null ? '' : bEff >= 1 ? 'eff-high' : bEff >= 0.9 ? 'eff-mid' : 'eff-low';
+    const pUtil  = p ? p.utilization : null;
+    const pCls   = pUtil === null ? '' : pUtil >= 90 ? 'eff-high' : pUtil >= 80 ? 'eff-mid' : 'eff-low';
+    if (m.hasData) { ytdWC += m.effScore; ytdWH += m.weightedHours; ytdOK = true; }
+    if (b?.hasData) { ytdBN += b.effRolls; ytdBH += b.weightedHours; }
+    return `<tr class="text-center">
       <td class="fw-semibold">${m.month} 月</td>
-      <td class="text-end">${fmt2(m.effScore)}</td>
-      <td class="text-end">${fmt2(m.weightedHours)}</td>
-      <td class="text-end">${cPerP.toFixed(2)}</td>
-      <td class="${pct.cls}">${pct.str}</td>
+      <td class="text-end">${m.hasData ? fmt2(m.effScore) : '—'}</td>
+      <td class="text-end">${m.hasData ? fmt2(m.weightedHours) : '—'}</td>
+      <td class="text-end">${wCPerP !== null ? wCPerP.toFixed(2) : '—'}</td>
+      <td class="${wPct.cls}">${wPct.str}</td>
+      <td class="text-end">${b?.hasData ? fmt2(b.effRolls) : '—'}</td>
+      <td class="text-end">${b?.hasData ? fmt2(b.weightedHours) : '—'}</td>
+      <td class="text-end">${bNPerO !== null ? bNPerO.toFixed(2) : '—'}</td>
+      <td class="${bCls}">${bEff !== null ? (bEff*100).toFixed(1)+'%' : '—'}</td>
+      <td class="text-end">${p ? fmt2(p.totalEffHours) : '—'}</td>
+      <td class="text-end">${p ? fmt2(p.totalCutHours) : '—'}</td>
+      <td class="${pCls}">${pUtil !== null ? pUtil.toFixed(1)+'%' : '—'}</td>
     </tr>`;
   });
-  document.getElementById('welding-monthly-body').innerHTML = mrows.join('');
+  document.getElementById('wbp-monthly-body').innerHTML = mrows.join('');
 
-  const mfoot = document.getElementById('welding-monthly-foot');
-  if (ytdOK && ytdH > 0) {
-    const cPerP = ytdC / ytdH;
-    const pct   = weldPct(cPerP);
-    mfoot.innerHTML = `<tr class="text-center">
+  // 月報 tfoot
+  if (ytdOK && ytdWH > 0) {
+    const wCPerP = ytdWC / ytdWH;
+    const wPct   = weldPct(wCPerP);
+    const bNPerO = ytdBH > 0 ? ytdBN / ytdBH : 0;
+    const bEff   = bNPerO / TARGET_BACK;
+    const bCls   = bEff >= 1 ? 'eff-high' : bEff >= 0.9 ? 'eff-mid' : 'eff-low';
+    document.getElementById('wbp-monthly-foot').innerHTML = `<tr class="text-center">
       <td>年度累計</td>
-      <td class="text-end">${fmt2(ytdC)}</td>
-      <td class="text-end">${fmt2(ytdH)}</td>
-      <td class="text-end">${cPerP.toFixed(2)}</td>
-      <td class="${pct.cls}">${pct.str}</td>
+      <td class="text-end">${fmt2(ytdWC)}</td>
+      <td class="text-end">${fmt2(ytdWH)}</td>
+      <td class="text-end">${wCPerP.toFixed(2)}</td>
+      <td class="${wPct.cls}">${wPct.str}</td>
+      <td class="text-end">${fmt2(ytdBN)}</td>
+      <td class="text-end">${fmt2(ytdBH)}</td>
+      <td class="text-end">${bNPerO.toFixed(2)}</td>
+      <td class="${bCls}">${(bEff*100).toFixed(1)}%</td>
+      <td>—</td><td>—</td><td>—</td>
     </tr>`;
   }
 
   // 日報 rows
-  const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
-  const dMap = {};
-  daily.forEach(d => { dMap[d.day] = d; });
+  const daysInMonth = new Date(cyear, cmonth, 0).getDate();
+  const wDayMap = {}, bDayMap = {}, pDayMap = {};
+  wd.forEach(d => { wDayMap[d.day] = d; });
+  bd.forEach(d => { bDayMap[d.day] = d; });
+  pd.forEach(d => { pDayMap[Number(d.date.split('-')[2])] = d; });
 
   const today = new Date();
-  const todayYear = today.getFullYear();
-  const todayMonth = today.getMonth() + 1;
-  const todayDay = today.getDate();
-
-  let dC = 0, dH = 0, dOK = false;
+  let dWC = 0, dWH = 0, dBN = 0, dBH = 0, dWOK = false;
   const drows = [];
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dd = dMap[day];
-    const dayKey   = `${String(currentMonth).padStart(2,'0')}/${String(day).padStart(2,'0')}`;
-    const machines = machineCounts[dayKey] || 0;
-    const dateObj  = new Date(currentYear, currentMonth - 1, day);
-    const isSunday = dateObj.getDay() === 0;
-    const isToday  = currentYear === todayYear && currentMonth === todayMonth && day === todayDay;
-    const isPast   = !isToday && (
-      currentYear < todayYear ||
-      (currentYear === todayYear && currentMonth < todayMonth) ||
-      (currentYear === todayYear && currentMonth === todayMonth && day < todayDay)
-    );
-    const isHoliday = !dd && (isSunday || isPast);
 
-    if (dd) {
-      dC += dd.effScore; dH += dd.weightedHours; dOK = true;
-      const cPerP = dd.weightedHours > 0 ? dd.effScore / dd.weightedHours : 0;
-      const pct   = weldPct(cPerP);
+  for (let day = 1; day <= daysInMonth; day++) {
+    const wD = wDayMap[day], bD = bDayMap[day], pD = pDayMap[day];
+    const dateObj  = new Date(cyear, cmonth - 1, day);
+    const isToday  = cyear === today.getFullYear() && cmonth === today.getMonth()+1 && day === today.getDate();
+    const isPast   = !isToday && (cyear < today.getFullYear() ||
+      (cyear === today.getFullYear() && cmonth < today.getMonth()+1) ||
+      (cyear === today.getFullYear() && cmonth === today.getMonth()+1 && day < today.getDate()));
+    const isHoliday = !wD && !bD && !pD && (dateObj.getDay() === 0 || isPast);
+
+    if (wD || bD || pD) {
+      if (wD) { dWC += wD.effScore; dWH += wD.weightedHours; dWOK = true; }
+      if (bD) { dBN += bD.effRolls; dBH += bD.weightedHours; }
+      const wCPerP = wD && wD.weightedHours > 0 ? wD.effScore / wD.weightedHours : null;
+      const wPct   = wCPerP !== null ? weldPct(wCPerP) : { str: '—', cls: '' };
+      const bNPerO = bD && bD.weightedHours > 0 ? bD.effRolls / bD.weightedHours : null;
+      const bEff   = bNPerO !== null ? bNPerO / TARGET_BACK : null;
+      const bCls   = bEff === null ? '' : bEff >= 1 ? 'eff-high' : bEff >= 0.9 ? 'eff-mid' : 'eff-low';
+      const pUtil  = pD ? pD.utilization : null;
+      const pCls   = pUtil === null ? '' : pUtil >= 90 ? 'eff-high' : pUtil >= 80 ? 'eff-mid' : 'eff-low';
       drows.push(`<tr>
-        <td class="text-center fw-semibold">${currentMonth}/${day}</td>
-        <td class="text-center">${machines || '—'}</td>
-        <td class="text-end">${fmt2(dd.effScore)}</td>
-        <td class="text-end">${fmt2(dd.weightedHours)}</td>
-        <td class="text-end">${cPerP.toFixed(2)}</td>
-        <td class="text-center ${pct.cls}">${pct.str}</td>
+        <td class="text-center fw-semibold">${cmonth}/${day}</td>
+        <td class="text-end">${wD ? fmt2(wD.effScore) : '—'}</td>
+        <td class="text-end">${wD ? fmt2(wD.weightedHours) : '—'}</td>
+        <td class="text-end">${wCPerP !== null ? wCPerP.toFixed(2) : '—'}</td>
+        <td class="text-center ${wPct.cls}">${wPct.str}</td>
+        <td class="text-end">${bD ? fmt2(bD.effRolls) : '—'}</td>
+        <td class="text-end">${bD ? fmt2(bD.weightedHours) : '—'}</td>
+        <td class="text-end">${bNPerO !== null ? bNPerO.toFixed(2) : '—'}</td>
+        <td class="text-center ${bCls}">${bEff !== null ? (bEff*100).toFixed(1)+'%' : '—'}</td>
+        <td class="text-end">${pD ? fmt2(pD.totalEffHours) : '—'}</td>
+        <td class="text-end">${pD ? fmt2(pD.totalCutHours) : '—'}</td>
+        <td class="text-center ${pCls}">${pUtil !== null ? pUtil.toFixed(1)+'%' : '—'}</td>
       </tr>`);
     } else if (isHoliday) {
       drows.push(`<tr class="day-holiday text-center">
-        <td class="fw-semibold">${currentMonth}/${day}</td>
-        <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+        <td class="fw-semibold">${cmonth}/${day}</td>
+        <td>—</td><td>—</td><td>—</td><td>—</td>
+        <td>—</td><td>—</td><td>—</td><td>—</td>
+        <td>—</td><td>—</td><td>—</td>
       </tr>`);
     } else {
       drows.push(`<tr class="no-data text-center">
-        <td class="text-dark fw-semibold">${currentMonth}/${day}</td>
-        <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+        <td class="text-dark fw-semibold">${cmonth}/${day}</td>
+        <td>—</td><td>—</td><td>—</td><td>—</td>
+        <td>—</td><td>—</td><td>—</td><td>—</td>
+        <td>—</td><td>—</td><td>—</td>
       </tr>`);
     }
   }
-  document.getElementById('welding-daily-body').innerHTML = drows.join('');
+  document.getElementById('wbp-daily-body').innerHTML = drows.join('');
 
-  const dfoot = document.getElementById('welding-daily-foot');
-  if (dOK && dH > 0) {
-    const cPerP = dC / dH;
-    const pct   = weldPct(cPerP);
-    dfoot.innerHTML = `<tr class="text-center">
-      <td>月合計</td><td>—</td>
-      <td class="text-end">${fmt2(dC)}</td>
-      <td class="text-end">${fmt2(dH)}</td>
-      <td class="text-end">${cPerP.toFixed(2)}</td>
-      <td class="${pct.cls}">${pct.str}</td>
+  // 日報 tfoot
+  if (dWOK && dWH > 0) {
+    const wCPerP = dWC / dWH;
+    const wPct   = weldPct(wCPerP);
+    const bNPerO = dBH > 0 ? dBN / dBH : 0;
+    const bEff   = bNPerO / TARGET_BACK;
+    const bCls   = bEff >= 1 ? 'eff-high' : bEff >= 0.9 ? 'eff-mid' : 'eff-low';
+    document.getElementById('wbp-daily-foot').innerHTML = `<tr class="text-center">
+      <td>月合計</td>
+      <td class="text-end">${fmt2(dWC)}</td>
+      <td class="text-end">${fmt2(dWH)}</td>
+      <td class="text-end">${wCPerP.toFixed(2)}</td>
+      <td class="${wPct.cls}">${wPct.str}</td>
+      <td class="text-end">${fmt2(dBN)}</td>
+      <td class="text-end">${fmt2(dBH)}</td>
+      <td class="text-end">${bNPerO.toFixed(2)}</td>
+      <td class="${bCls}">${(bEff*100).toFixed(1)}%</td>
+      <td>—</td><td>—</td><td>—</td>
     </tr>`;
   }
-}
-
-function selectWeldingMonth(el, m) {
-  document.querySelectorAll('#tab-welding .month-row').forEach(r => r.classList.remove('active'));
-  el.classList.add('active');
-}
-
-// ── 舊版 bar chart（暫保留但不呼叫）────────────────────────────────────────────
-function loadReport(system) {
-  jsonpCall(GAS_URL + '?action=getReport&system=' + system, data => renderReport(system, data));
-}
-
-function renderReport(system, data) {
-  const { monthly, daily, currentMonth, currentYear } = data;
-
-  document.getElementById(`year-title-${system}`).textContent =
-    `${currentYear} 年各月效率合計`;
-  document.getElementById(`month-title-${system}`).textContent =
-    `${currentMonth} 月日報`;
-
-  const allMonths    = Array.from({length: 12}, (_, i) => i + 1);
-  const monthMap     = {};
-  monthly.forEach(m => { monthMap[m.month] = m.total; });
-  const labels       = allMonths.map(m => MONTH_NAMES[m - 1]);
-  const values       = allMonths.map(m => monthMap[m] || 0);
-  const bgColors     = allMonths.map(m => m === currentMonth ? 'rgba(13,110,253,.8)' : 'rgba(13,110,253,.25)');
-  const borderColors = allMonths.map(m => m === currentMonth ? '#0a58ca' : '#6ea8fe');
-
-  const ctx = document.getElementById(`chart-${system}`).getContext('2d');
-  if (charts[system]) charts[system].destroy();
-  charts[system] = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        data: values,
-        backgroundColor: bgColors,
-        borderColor: borderColors,
-        borderWidth: 1,
-        borderRadius: 3,
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: c => ` 效率合計：${c.parsed.y.toLocaleString()}` } }
-      },
-      scales: {
-        x: { ticks: { color: '#6c757d', font: { size: 11 } }, grid: { color: '#dee2e6' } },
-        y: { ticks: { color: '#6c757d' }, grid: { color: '#dee2e6' }, beginAtZero: true }
-      }
-    }
-  });
-
-  const container = document.getElementById(`daily-${system}`);
-  if (!daily.length) {
-    container.innerHTML = '<div class="no-data-div">本月尚無資料</div>';
-    return;
-  }
-
-  let monthTotal = 0;
-  const rows = daily.map(d => {
-    monthTotal += d.total;
-    return `<tr>
-      <td style="font-size:13px">${currentMonth}/${d.date.split('/')[1]}</td>
-      <td class="td-num" style="font-size:13px">${d.total.toLocaleString(undefined, {minimumFractionDigits:1, maximumFractionDigits:1})}</td>
-      <td class="td-sub" style="font-size:13px">${d.headcount} 人</td>
-    </tr>`;
-  }).join('');
-
-  container.innerHTML = `
-    <table class="table table-sm table-hover mb-0">
-      <thead><tr>
-        <th style="font-size:12px;color:#6c757d;font-weight:500">日期</th>
-        <th class="text-end" style="font-size:12px;color:#6c757d;font-weight:500">效率合計</th>
-        <th class="text-end" style="font-size:12px;color:#6c757d;font-weight:500">人數</th>
-      </tr></thead>
-      <tbody>
-        ${rows}
-        <tr class="tr-total">
-          <td style="font-size:13px">${currentMonth} 月合計</td>
-          <td class="td-num" style="font-size:13px">${monthTotal.toLocaleString(undefined, {minimumFractionDigits:1, maximumFractionDigits:1})}</td>
-          <td class="td-sub" style="font-size:13px">—</td>
-        </tr>
-      </tbody>
-    </table>
-  `;
 }
 
 // ── JSONP 工具 ────────────────────────────────────────────────────────────────
@@ -969,110 +609,9 @@ function jsonpCall(url, cb) {
   document.head.appendChild(s);
 }
 
-// ── 切勾報表 ─────────────────────────────────────────────────────────────────
-function loadCuttingReport() {
-  jsonpCall(GAS_URL + '?action=getCuttingReport', renderCuttingReport);
-}
-
-function renderCuttingReport(data) {
-  const { monthly, daily, currentMonthTotal } = data;
-  const now = new Date();
-  const currentYear  = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
-
-  document.getElementById('cutting-year-label').textContent = `${currentYear} 年切勾數量月報`;
-  document.getElementById('cutting-daily-title').textContent =
-    `▼ ${currentYear}年 ${currentMonth}月 日報`;
-
-  if (!monthly.length) {
-    document.getElementById('cutting-monthly-body').innerHTML =
-      '<tr><td colspan="4" class="text-center text-muted py-3">尚無資料</td></tr>';
-  } else {
-    document.getElementById('cutting-monthly-body').innerHTML = monthly.map(m =>
-      `<tr class="text-center">
-        <td class="fw-semibold">${m.month}</td>
-        <td class="text-end">${m.totalCount.toLocaleString()}</td>
-        <td class="text-end">${fmt2(m.totalWorkH)}</td>
-        <td class="text-end">${m.totalMachines}</td>
-      </tr>`
-    ).join('');
-    const total = monthly.reduce((s, m) => s + m.totalCount, 0);
-    document.getElementById('cutting-monthly-foot').innerHTML =
-      `<tr class="text-center"><td>年度累計</td><td class="text-end">${total.toLocaleString()}</td><td colspan="2"></td></tr>`;
-  }
-
-  if (!daily.length) {
-    document.getElementById('cutting-daily-body').innerHTML =
-      '<tr><td colspan="4" class="text-center text-muted py-3">本月尚無資料</td></tr>';
-  } else {
-    document.getElementById('cutting-daily-body').innerHTML = daily.map(d =>
-      `<tr class="text-center">
-        <td class="fw-semibold">${d.date.slice(5)}</td>
-        <td class="text-end">${d.count.toLocaleString()}</td>
-        <td class="text-end">${fmt2(d.workH)}</td>
-        <td class="text-end">${d.machines}</td>
-      </tr>`
-    ).join('');
-    document.getElementById('cutting-daily-foot').innerHTML =
-      `<tr class="text-center"><td>月合計</td><td class="text-end">${currentMonthTotal.toLocaleString()}</td><td colspan="2"></td></tr>`;
-  }
-}
-
-// ── 裁片報表 ─────────────────────────────────────────────────────────────────
-function loadProcessReport() {
-  jsonpCall(GAS_URL + '?action=getProcessReport', renderProcessReport);
-}
-
-function renderProcessReport(data) {
-  const { monthly, daily } = data;
-  const now = new Date();
-  const currentYear  = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
-
-  document.getElementById('process-year-label').textContent =
-    `${currentYear} 年裁片效率月報`;
-  document.getElementById('process-daily-title').textContent =
-    `▼ ${currentYear}年 ${currentMonth}月 日報`;
-
-  function fmtUtil(u) {
-    return u === null ? '-' : u.toFixed(1) + '%';
-  }
-
-  if (!monthly.length) {
-    document.getElementById('process-monthly-body').innerHTML =
-      '<tr><td colspan="4" class="text-center text-muted py-3">尚無資料</td></tr>';
-  } else {
-    document.getElementById('process-monthly-body').innerHTML = monthly.map(m =>
-      `<tr class="text-center">
-        <td class="fw-semibold">${m.month}</td>
-        <td class="text-end">${fmt2(m.totalEffHours)}</td>
-        <td class="text-end">${fmt2(m.totalCutHours)}</td>
-        <td class="td-num">${fmtUtil(m.utilization)}</td>
-      </tr>`
-    ).join('');
-  }
-
-  if (!daily.length) {
-    document.getElementById('process-daily-body').innerHTML =
-      '<tr><td colspan="4" class="text-center text-muted py-3">本月尚無資料</td></tr>';
-  } else {
-    document.getElementById('process-daily-body').innerHTML = daily.map(d =>
-      `<tr class="text-center">
-        <td class="fw-semibold">${d.date.slice(5)}</td>
-        <td class="text-end">${fmt2(d.totalEffHours)}</td>
-        <td class="text-end">${fmt2(d.totalCutHours)}</td>
-        <td class="td-num">${fmtUtil(d.utilization)}</td>
-      </tr>`
-    ).join('');
-  }
-}
-
 // ── 啟動 ──────────────────────────────────────────────────────────────────────
-loadSlittingReport();
-loadWeldingReport();
-loadBackingReport();
-loadCuttingReport();
-loadProcessReport();
+loadTab1();
+loadTab2();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 </body>
