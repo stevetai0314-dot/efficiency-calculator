@@ -32,8 +32,8 @@
     .day-holiday td { background: #ffe5e5 !important; color: #b02020 !important; }
     .day-holiday .col-inv { background: #ffd8d8 !important; }
     /* sticky daily headers */
-    .daily-table-wrap { overflow-y: clip; }
-    .daily-thead th { position: sticky; top: var(--navbar-h, 57px); z-index: 5; background-clip: padding-box; }
+    .daily-table-wrap { overflow: visible; }
+    .daily-thead th { position: sticky; top: var(--sticky-top, 57px); z-index: 5; background-clip: padding-box; }
     .table-primary.daily-thead th { background-color: #cfe2ff; }
     /* detail section */
     .detail-label { color: #495057; font-size: 0.8rem; font-weight: 600; margin-top: 1.25rem; margin-bottom: 0.25rem; }
@@ -454,8 +454,11 @@ const charts = {};
 
 // ── Navbar 高度 → CSS var（sticky daily headers 用）────────────────────────────
 window.addEventListener('load', () => {
-  const nav = document.querySelector('.navbar');
-  if (nav) document.documentElement.style.setProperty('--navbar-h', nav.offsetHeight + 'px');
+  const nav  = document.querySelector('.navbar');
+  const tabs = document.querySelector('#reportTabs')?.closest('.d-flex');
+  const h = (nav?.offsetHeight || 0) + (tabs?.offsetHeight || 0);
+  document.documentElement.style.setProperty('--navbar-h', (nav?.offsetHeight || 57) + 'px');
+  document.documentElement.style.setProperty('--sticky-top', h + 'px');
 });
 
 // ── 折疊／展開所有日報 ────────────────────────────────────────────────────────
