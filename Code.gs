@@ -38,6 +38,51 @@ function jsonp_(callback, data) {
       : ContentService.MimeType.JSON);
 }
 
+// ── 鎖定 / 解鎖 ───────────────────────────────────────────────────────────────
+
+const PROTECTED_SHEETS = ['分條記錄', '焊接記錄', '褙膠記錄', '裁切記錄', '切勾記錄'];
+
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('工具')
+    .addItem('🔒 鎖定記錄分頁', 'lockSheets')
+    .addItem('🔓 解鎖記錄分頁', 'unlockSheets')
+    .addToUi();
+}
+
+function lockSheets() {
+  const ss = SpreadsheetApp.openById(SS_ID);
+  const me = Session.getEffectiveUser();
+  PROTECTED_SHEETS.forEach(name => {
+    const sheet = ss.getSheetByName(name);
+    if (!sheet) return;
+    const existing = sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET);
+    if (existing.length > 0) return;
+    const prot = sheet.protect();
+    prot.addEditor(me);
+    const others = prot.getEditors().filter(u => u.getEmail() !== me.getEmail());
+    if (others.length) prot.removeEditors(others);
+  });
+  SpreadsheetApp.getUi().alert('已鎖定所有記錄分頁。');
+}
+
+function unlockSheets() {
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.prompt('解鎖密碼', '請輸入密碼：', ui.ButtonSet.OK_CANCEL);
+  if (response.getSelectedButton() !== ui.Button.OK) return;
+  if (response.getResponseText().trim() !== 'ZZ') {
+    ui.alert('密碼錯誤。');
+    return;
+  }
+  const ss = SpreadsheetApp.openById(SS_ID);
+  PROTECTED_SHEETS.forEach(name => {
+    const sheet = ss.getSheetByName(name);
+    if (!sheet) return;
+    sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET).forEach(p => p.remove());
+  });
+  ui.alert('已解鎖所有記錄分頁。');
+}
+
 // ── 員工清單 ──────────────────────────────────────────────────────────────────
 
 function getEmployees_() {
@@ -46,8 +91,8 @@ function getEmployees_() {
   const data  = sheet.getDataRange().getValues();
   const out   = [];
   for (let i = 0; i < data.length; i++) {
-    const id   = String(data[i][2] || '').trim(); // C 欄
-    const name = String(data[i][3] || '').trim(); // D 欄
+    const id   = String(data[i][2] || '').trim();
+    const name = String(data[i][3] || '').trim();
     if (id && name) out.push({ id, name });
   }
   return out;
@@ -157,7 +202,8 @@ function saveRecords_(records, date, system) {
     ]);
   } else if (system === 'cutting') {
     rows = records.map(r => [
-      date, r.cutCount || 0, r.workHours || 0, r.deptCount || 0
+      date, r.cutCount || 0, r.workHours || 0, r.deptCount || 0,
+      r.abnormalHours || 0, r.abnormalReason || ''
     ]);
   } else if (system === 'process') {
     rows = records.map(r => [
@@ -195,7 +241,7 @@ function getOrCreateSheet_(name, system) {
       headers = ['生產日期','儲存時間','工號','員工姓名','上班時數','異常時數',
                  '碼長','規格分類','係數','卷數','效率換算','異常原因','新人扣時%'];
     } else if (system === 'cutting') {
-      headers = ['日期','切勾數量','工作時數','機器數'];
+      headers = ['日期','切勾數量','工作時數','機器數','異常時數','異常原因'];
     } else if (system === 'process') {
       headers = ['生產日期','儲存時間','工號','員工姓名',
                  '工序','開始時間','結束時間','訂單號','客戶名稱',
@@ -237,7 +283,6 @@ function getSlittingReport_() {
     }
   }
 
-  // 分條記錄
   // col 0=生產日期, 2=工號, 4=上班時數, 5=異常時數, 6=生產異常帶時數, 9=捲數, 11=效率換算
   const monthlyDet = {};
   const dailyDet   = {};
@@ -268,25 +313,26 @@ function getSlittingReport_() {
 
       const P         = workH - abnH - prodAbnH * 0.2;
       const empDayKey = `${empId}|${dateStr}`;
+      const dayKey    = `${String(month).padStart(2,'0')}/${String(day).padStart(2,'0')}`;
 
-      if (!monthlyDet[month]) monthlyDet[month] = { rolls: 0, effRolls: 0, weightedHours: 0, empDays: {} };
+      // 月報累計（含每日小計用於平均）
+      if (!monthlyDet[month]) monthlyDet[month] = { rolls: 0, effRolls: 0, weightedHours: 0, empDays: {}, dayHours: {} };
       if (!monthlyDet[month].empDays[empDayKey]) {
         monthlyDet[month].empDays[empDayKey] = true;
         monthlyDet[month].weightedHours += P;
+        monthlyDet[month].dayHours[dayKey] = (monthlyDet[month].dayHours[dayKey] || 0) + P;
       }
       monthlyDet[month].rolls    += rolls;
       monthlyDet[month].effRolls += effRolls;
 
-      if (month === currentMonth) {
-        const dayKey = `${String(month).padStart(2,'0')}/${String(day).padStart(2,'0')}`;
-        if (!dailyDet[dayKey]) dailyDet[dayKey] = { rolls: 0, effRolls: 0, weightedHours: 0, empSet: {} };
-        if (!dailyDet[dayKey].empSet[empId]) {
-          dailyDet[dayKey].empSet[empId] = true;
-          dailyDet[dayKey].weightedHours += P;
-        }
-        dailyDet[dayKey].rolls    += rolls;
-        dailyDet[dayKey].effRolls += effRolls;
+      // 日報累計（全年所有月份）
+      if (!dailyDet[dayKey]) dailyDet[dayKey] = { rolls: 0, effRolls: 0, weightedHours: 0, empSet: {}, month, day };
+      if (!dailyDet[dayKey].empSet[empId]) {
+        dailyDet[dayKey].empSet[empId] = true;
+        dailyDet[dayKey].weightedHours += P;
       }
+      dailyDet[dayKey].rolls    += rolls;
+      dailyDet[dayKey].effRolls += effRolls;
     }
   }
 
@@ -294,16 +340,23 @@ function getSlittingReport_() {
   for (let m = 1; m <= currentMonth; m++) {
     const det = monthlyDet[m];
     if (det) {
-      monthly.push({ month: m, rolls: Math.round(det.rolls * 10) / 10,
+      const totalH     = det.weightedHours;
+      const activeDays = Object.values(det.dayHours).filter(h => h > 0).length;
+      const avgH       = activeDays > 0 ? Math.round(totalH / activeDays * 100) / 100 : 0;
+      monthly.push({ month: m,
+        rolls: Math.round(det.rolls * 10) / 10,
         effRolls: Math.round(det.effRolls * 100) / 100,
-        weightedHours: Math.round(det.weightedHours * 100) / 100,
+        weightedHours: Math.round(totalH * 100) / 100,
+        avgWeightedHours: avgH,
         hasData: true, isHistorical: false });
     } else {
       const hist = histMap[`${currentYear}-${m}`];
       if (hist && (hist.rolls || hist.effRolls || hist.weightedHours)) {
-        monthly.push({ month: m, rolls: Math.round(hist.rolls * 10) / 10,
+        monthly.push({ month: m,
+          rolls: Math.round(hist.rolls * 10) / 10,
           effRolls: Math.round(hist.effRolls * 100) / 100,
           weightedHours: Math.round(hist.weightedHours * 100) / 100,
+          avgWeightedHours: Math.round(hist.weightedHours * 100) / 100,
           hasData: true, isHistorical: true });
       } else {
         monthly.push({ month: m, hasData: false, isHistorical: false });
@@ -313,13 +366,13 @@ function getSlittingReport_() {
 
   const daily = Object.keys(dailyDet).map(dayKey => {
     const dd = dailyDet[dayKey];
-    return { date: dayKey, day: Number(dayKey.split('/')[1]),
+    return { date: dayKey, day: dd.day, month: dd.month,
       rolls: Math.round(dd.rolls * 10) / 10,
       effRolls: Math.round(dd.effRolls * 100) / 100,
       weightedHours: Math.round(dd.weightedHours * 100) / 100 };
-  }).sort((a, b) => a.day - b.day);
+  }).sort((a, b) => a.date.localeCompare(b.date));
 
-  // 機台數量（開機台數備註 B欄，index 1）
+  // 機台數量（全年所有月份）
   const machineCounts = {};
   const machineSheet = ss.getSheetByName('開機台數備註');
   if (machineSheet) {
@@ -334,7 +387,7 @@ function getSlittingReport_() {
       const p = dStr.split(/[\/\-]/);
       if (p.length < 3) continue;
       const my = Number(p[0]), mm = Number(p[1]), md2 = Number(p[2]);
-      if (my !== currentYear || mm !== currentMonth) continue;
+      if (my !== currentYear) continue;
       machineCounts[`${String(mm).padStart(2,'0')}/${String(md2).padStart(2,'0')}`] = cnt;
     }
   }
@@ -592,16 +645,15 @@ function getWeldingReport_() {
 function getCuttingReport_() {
   const ss    = SpreadsheetApp.openById(SS_ID);
   const sheet = ss.getSheetByName('切勾記錄');
-  if (!sheet) return { monthly: [], daily: [], currentMonthTotal: 0 };
+  if (!sheet) return { monthly: [], daily: [], currentMonthTotal: 0, currentMonth: 0, currentYear: 0 };
 
   const tz           = 'Asia/Ho_Chi_Minh';
   const now          = new Date();
   const currentYear  = Number(Utilities.formatDate(now, tz, 'yyyy'));
   const currentMonth = Number(Utilities.formatDate(now, tz, 'MM'));
 
-  const data    = sheet.getDataRange().getValues();
-  const monthly = {};
-  const daily   = {};
+  const data   = sheet.getDataRange().getValues();
+  const byDate = {};
 
   for (let i = 1; i < data.length; i++) {
     const rawDate = data[i][0];
@@ -611,7 +663,7 @@ function getCuttingReport_() {
     const count    = Number(data[i][1]) || 0;
     const workH    = Number(data[i][2]) || 0;
     const machines = Number(data[i][3]) || 0;
-    if (!dateStr || count === 0) continue;
+    if (!dateStr || !count) continue;
 
     const parts = dateStr.split(/[\/\-]/);
     if (parts.length < 3) continue;
@@ -620,37 +672,48 @@ function getCuttingReport_() {
     const day   = Number(parts[2]);
     if (year !== currentYear) continue;
 
-    const monthKey = `${year}-${String(month).padStart(2,'0')}`;
-    if (!monthly[monthKey]) monthly[monthKey] = { count: 0, workH: 0, machines: 0 };
-    monthly[monthKey].count    += count;
-    monthly[monthKey].workH    += workH;
-    monthly[monthKey].machines += machines;
-
-    if (month === currentMonth) {
-      const dateKey = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-      if (!daily[dateKey]) daily[dateKey] = { count: 0, workH: 0, machines: 0 };
-      daily[dateKey].count    += count;
-      daily[dateKey].workH    += workH;
-      daily[dateKey].machines += machines;
-    }
+    if (!byDate[dateStr]) byDate[dateStr] = { count: 0, workH: 0, machines: 0, year, month, day };
+    byDate[dateStr].count    += count;
+    byDate[dateStr].workH    += workH;
+    byDate[dateStr].machines += machines;
   }
 
-  const monthlyArr = Object.keys(monthly).sort().map(m => ({
-    month: m,
-    totalCount: monthly[m].count,
-    totalWorkH: Math.round(monthly[m].workH * 100) / 100,
-    totalMachines: monthly[m].machines
-  }));
-  const dailyArr = Object.keys(daily).sort().map(d => ({
-    date: d,
-    count: daily[d].count,
-    workH: Math.round(daily[d].workH * 100) / 100,
-    machines: daily[d].machines
-  }));
-  const currentMonthKey   = `${currentYear}-${String(currentMonth).padStart(2,'0')}`;
-  const currentMonthTotal = monthly[currentMonthKey] ? monthly[currentMonthKey].count : 0;
+  // 月報：工時/機器數取平均（排除0）
+  const monthlyMap = {};
+  for (const d of Object.values(byDate)) {
+    const monthKey = `${d.year}-${String(d.month).padStart(2,'0')}`;
+    if (!monthlyMap[monthKey]) monthlyMap[monthKey] = { count: 0, workH: 0, workDays: 0, machines: 0, machineDays: 0 };
+    monthlyMap[monthKey].count += d.count;
+    if (d.workH > 0)    { monthlyMap[monthKey].workH += d.workH; monthlyMap[monthKey].workDays++; }
+    if (d.machines > 0) { monthlyMap[monthKey].machines += d.machines; monthlyMap[monthKey].machineDays++; }
+  }
 
-  return { monthly: monthlyArr, daily: dailyArr, currentMonthTotal };
+  const monthlyArr = Object.keys(monthlyMap).sort().map(m => ({
+    month: m,
+    totalCount: monthlyMap[m].count,
+    avgWorkH: monthlyMap[m].workDays > 0
+      ? Math.round(monthlyMap[m].workH / monthlyMap[m].workDays * 100) / 100 : 0,
+    avgMachines: monthlyMap[m].machineDays > 0
+      ? Math.round(monthlyMap[m].machines / monthlyMap[m].machineDays * 10) / 10 : 0,
+  }));
+
+  const dailyArr = Object.values(byDate)
+    .sort((a, b) => {
+      if (a.month !== b.month) return a.month - b.month;
+      return a.day - b.day;
+    })
+    .map(d => ({
+      date: `${d.year}-${String(d.month).padStart(2,'0')}-${String(d.day).padStart(2,'0')}`,
+      count: d.count,
+      workH: Math.round(d.workH * 100) / 100,
+      machines: d.machines,
+      year: d.year, month: d.month, day: d.day
+    }));
+
+  const currentMonthKey   = `${currentYear}-${String(currentMonth).padStart(2,'0')}`;
+  const currentMonthTotal = monthlyMap[currentMonthKey] ? monthlyMap[currentMonthKey].count : 0;
+
+  return { monthly: monthlyArr, daily: dailyArr, currentMonthTotal, currentMonth, currentYear };
 }
 
 // ── 裁切報表 ──────────────────────────────────────────────────────────────────

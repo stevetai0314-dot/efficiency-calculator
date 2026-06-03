@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
@@ -100,12 +100,12 @@
           <th class="col-inv" style="background:#1e4470!important">捲數<small>J</small></th>
           <th class="col-inv" style="background:#1e4470!important">捲數/時<small>J÷P</small></th>
           <th style="background:#1a3a5c!important">效率捲數<small>O</small></th>
-          <th style="background:#1a3a5c!important">加權工時<small>P</small></th>
+          <th style="background:#1a3a5c!important">平均工時<small>P avg</small></th>
           <th style="background:#1a3a5c!important">效率捲/時<small>O÷P</small></th>
           <th style="background:#1a3a5c!important">效率%</th>
           <th style="background:#1a4a2e!important">數量</th>
-          <th style="background:#1a4a2e!important">工時</th>
-          <th style="background:#1a4a2e!important">機器數</th>
+          <th style="background:#1a4a2e!important">平均工時</th>
+          <th style="background:#1a4a2e!important">平均機器</th>
         </tr>
       </thead>
       <tbody id="sc-monthly-body">
@@ -116,7 +116,10 @@
     </div>
 
     <div class="daily-section">
-      <div class="small text-muted mt-3 mb-1" id="sc-daily-title">▼ 日報</div>
+      <div class="d-flex align-items-center gap-2 mt-3 mb-1">
+        <div class="small text-muted" id="sc-daily-title">▼ 日報</div>
+        <select id="sc-month-select" class="form-select form-select-sm ms-auto" style="width:auto" onchange="onScMonthChange()"></select>
+      </div>
       <div class="table-responsive daily-table-wrap">
       <table class="table table-sm table-bordered align-middle mb-0">
         <thead class="table-dark text-center daily-thead">
@@ -268,6 +271,7 @@ function fmt2(v) { return v.toLocaleString(undefined, {minimumFractionDigits:2, 
 
 // ── Tab 1：分條/切勾 ──────────────────────────────────────────────────────────
 const _tab1 = { slitting: null, cutting: null };
+let _scSelectedMonth = 0;
 
 function loadTab1() {
   jsonpCall(GAS_URL + '?action=getSlittingReport', d => { _tab1.slitting = d; _tryRenderTab1(); });
@@ -279,21 +283,40 @@ function _tryRenderTab1() {
   renderTab1(_tab1.slitting, _tab1.cutting);
 }
 
+function onScMonthChange() {
+  const sel = document.getElementById('sc-month-select');
+  _scSelectedMonth = Number(sel.value);
+  if (_tab1.slitting && _tab1.cutting) {
+    renderDailyTab1(_tab1.slitting, _tab1.cutting, _scSelectedMonth);
+  }
+}
+
 function renderTab1(slit, cut) {
   const { monthly: sm, daily: sd, machineCounts = {}, currentMonth, currentYear } = slit;
   const { monthly: cm, daily: cd } = cut;
   const cyear  = currentYear;
   const cmonth = currentMonth;
 
-  document.getElementById('sc-year-label').textContent  = `${cyear} 年分條／切勾月報`;
-  document.getElementById('sc-daily-title').textContent = `▼ ${cyear}年 ${cmonth}月 日報`;
+  if (!_scSelectedMonth) _scSelectedMonth = cmonth;
+
+  document.getElementById('sc-year-label').textContent = `${cyear} 年分條／切勾月報`;
+
+  // 月份選擇器
+  const sel = document.getElementById('sc-month-select');
+  const availMonths = new Set(sm.filter(m => m.hasData).map(m => m.month));
+  cd.forEach(d => availMonths.add(d.month));
+  sd.forEach(d => availMonths.add(d.month));
+  const sortedMonths = [...availMonths].sort((a, b) => a - b);
+  sel.innerHTML = sortedMonths.map(m =>
+    `<option value="${m}" ${m === _scSelectedMonth ? 'selected' : ''}>${m}月</option>`
+  ).join('');
 
   // cutting monthly map: month number → row
   const cutMonthMap = {};
   cm.forEach(m => { cutMonthMap[Number(m.month.split('-')[1])] = m; });
 
-  // 月報 rows
-  let ytdR = 0, ytdE = 0, ytdH = 0, ytdCQ = 0, ytdCH = 0, ytdCOK = false, ytdOK = false;
+  // 月報 rows（工時欄顯示平均，效率仍用總工時）
+  let ytdR = 0, ytdE = 0, ytdH = 0, ytdCQ = 0, ytdOK = false, ytdCOK = false;
   const mrows = sm.map(m => {
     const c = cutMonthMap[m.month] || null;
     if (!m.hasData && !c) {
@@ -302,28 +325,29 @@ function renderTab1(slit, cut) {
         <td>—</td><td>—</td><td>—</td><td>—</td>
         <td>—</td><td>—</td><td>—</td></tr>`;
     }
-    const jPerP = m.hasData && m.weightedHours > 0 ? m.rolls / m.weightedHours : null;
-    const oPerP = m.hasData && m.weightedHours > 0 ? m.effRolls / m.weightedHours : null;
-    const eff   = oPerP !== null ? oPerP / TARGET_SLIT : null;
-    const cls   = eff === null ? '' : eff >= 1 ? 'eff-high' : eff >= 0.9 ? 'eff-mid' : 'eff-low';
+    const jPerP  = m.hasData && m.weightedHours > 0 ? m.rolls / m.weightedHours : null;
+    const oPerP  = m.hasData && m.weightedHours > 0 ? m.effRolls / m.weightedHours : null;
+    const eff    = oPerP !== null ? oPerP / TARGET_SLIT : null;
+    const cls    = eff === null ? '' : eff >= 1 ? 'eff-high' : eff >= 0.9 ? 'eff-mid' : 'eff-low';
+    const dispH  = m.avgWeightedHours != null ? m.avgWeightedHours : m.weightedHours;
     if (m.hasData) { ytdR += m.rolls; ytdE += m.effRolls; ytdH += m.weightedHours; ytdOK = true; }
-    if (c) { ytdCQ += c.totalCount; ytdCH += c.totalWorkH; ytdCOK = true; }
+    if (c) { ytdCQ += c.totalCount; ytdCOK = true; }
     return `<tr class="text-center">
       <td class="fw-semibold">${m.month} 月</td>
       <td class="text-end col-inv">${m.hasData ? fmt0(m.rolls) : '—'}</td>
       <td class="text-end col-inv">${jPerP !== null ? jPerP.toFixed(2) : '—'}</td>
       <td class="text-end">${m.hasData ? fmt2(m.effRolls) : '—'}</td>
-      <td class="text-end">${m.hasData ? fmt2(m.weightedHours) : '—'}</td>
+      <td class="text-end">${m.hasData ? fmt2(dispH) : '—'}</td>
       <td class="text-end">${oPerP !== null ? oPerP.toFixed(2) : '—'}</td>
       <td class="${cls}">${eff !== null ? (eff * 100).toFixed(1) + '%' : '—'}</td>
       <td class="text-end">${c ? c.totalCount.toLocaleString() : '—'}</td>
-      <td class="text-end">${c ? fmt2(c.totalWorkH) : '—'}</td>
-      <td class="text-end">${c ? c.totalMachines : '—'}</td>
+      <td class="text-end">${c ? fmt2(c.avgWorkH) : '—'}</td>
+      <td class="text-end">${c ? c.avgMachines : '—'}</td>
     </tr>`;
   });
   document.getElementById('sc-monthly-body').innerHTML = mrows.join('');
 
-  // 月報 tfoot
+  // 月報 tfoot（年度累計，工時用總和）
   if (ytdOK && ytdH > 0) {
     const jPerP = ytdR / ytdH, oPerP = ytdE / ytdH;
     const eff = oPerP / TARGET_SLIT;
@@ -333,36 +357,48 @@ function renderTab1(slit, cut) {
       <td class="text-end col-inv">${fmt0(ytdR)}</td>
       <td class="text-end col-inv">${jPerP.toFixed(2)}</td>
       <td class="text-end">${fmt2(ytdE)}</td>
-      <td class="text-end">${fmt2(ytdH)}</td>
+      <td class="text-end">—</td>
       <td class="text-end">${oPerP.toFixed(2)}</td>
       <td class="${cls}">${(eff * 100).toFixed(1)}%</td>
       <td class="text-end">${ytdCOK ? ytdCQ.toLocaleString() : '—'}</td>
-      <td class="text-end">${ytdCOK ? fmt2(ytdCH) : '—'}</td>
+      <td class="text-end">—</td>
       <td class="text-end">—</td>
     </tr>`;
   }
 
-  // 日報 rows
-  const daysInMonth = new Date(cyear, cmonth, 0).getDate();
-  const slitDayMap = {};
-  sd.forEach(d => { slitDayMap[d.day] = d; });
-  const cutDayMap = {};
-  cd.forEach(d => { cutDayMap[Number(d.date.split('-')[2])] = d; });
+  renderDailyTab1(slit, cut, _scSelectedMonth);
+}
 
+function renderDailyTab1(slit, cut, selMonth) {
+  const { daily: sd, machineCounts = {}, currentYear } = slit;
+  const { daily: cd } = cut;
+  const cyear  = currentYear;
+  const cmonth = selMonth;
+
+  document.getElementById('sc-daily-title').textContent = `▼ ${cyear}年 ${cmonth}月 日報`;
+
+  const slitDayMap = {};
+  sd.filter(d => d.month === cmonth).forEach(d => { slitDayMap[d.day] = d; });
+  const cutDayMap = {};
+  cd.filter(d => d.month === cmonth).forEach(d => { cutDayMap[d.day] = d; });
+
+  const daysInMonth = new Date(cyear, cmonth, 0).getDate();
   const today = new Date();
+  const todayY = today.getFullYear(), todayM = today.getMonth() + 1, todayD = today.getDate();
+
   let dR = 0, dE = 0, dH = 0, dCQ = 0, dCH = 0, dCOK = false, dOK = false;
   const drows = [];
 
   for (let day = 1; day <= daysInMonth; day++) {
     const sl = slitDayMap[day];
     const cu = cutDayMap[day];
-    const dayKey  = `${String(cmonth).padStart(2,'0')}/${String(day).padStart(2,'0')}`;
+    const dayKey   = `${String(cmonth).padStart(2,'0')}/${String(day).padStart(2,'0')}`;
     const machines = machineCounts[dayKey] || 0;
     const dateObj  = new Date(cyear, cmonth - 1, day);
-    const isToday  = cyear === today.getFullYear() && cmonth === today.getMonth()+1 && day === today.getDate();
-    const isPast   = !isToday && (cyear < today.getFullYear() ||
-      (cyear === today.getFullYear() && cmonth < today.getMonth()+1) ||
-      (cyear === today.getFullYear() && cmonth === today.getMonth()+1 && day < today.getDate()));
+    const isToday  = cyear === todayY && cmonth === todayM && day === todayD;
+    const isPast   = !isToday && (cyear < todayY ||
+      (cyear === todayY && cmonth < todayM) ||
+      (cyear === todayY && cmonth === todayM && day < todayD));
     const isHoliday = !sl && !cu && (dateObj.getDay() === 0 || isPast);
 
     if (sl || cu) {
@@ -420,6 +456,8 @@ function renderTab1(slit, cut) {
       <td class="text-end">${dCOK ? fmt2(dCH) : '—'}</td>
       <td class="text-end">—</td>
     </tr>`;
+  } else {
+    document.getElementById('sc-daily-foot').innerHTML = '';
   }
 }
 
