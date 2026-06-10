@@ -177,9 +177,9 @@
           <th colspan="3" style="background:#4a1a1a!important">裁片</th>
         </tr>
         <tr>
-          <th style="background:#1a3a5c!important">效率換算<small>C</small></th>
-          <th style="background:#1a3a5c!important">加權工時<small>P</small></th>
-          <th style="background:#1a3a5c!important">換算/時<small>C÷P</small></th>
+          <th style="background:#1a3a5c!important">效率換算<small>K</small></th>
+          <th style="background:#1a3a5c!important">N欄工時</th>
+          <th style="background:#1a3a5c!important">換算/時<small>K÷N</small></th>
           <th style="background:#1a3a5c!important">效率%</th>
           <th style="background:#1a4a2e!important">效率卷數<small>N</small></th>
           <th style="background:#1a4a2e!important">加權工時<small>O</small></th>
@@ -209,9 +209,9 @@
             <th colspan="3" style="background:#4a1a1a!important">裁片</th>
           </tr>
           <tr>
-            <th style="background:#1a3a5c!important">效率換算<small>C</small></th>
-            <th style="background:#1a3a5c!important">加權工時<small>P</small></th>
-            <th style="background:#1a3a5c!important">換算/時</th>
+            <th style="background:#1a3a5c!important">效率換算<small>K</small></th>
+            <th style="background:#1a3a5c!important">N欄工時</th>
+            <th style="background:#1a3a5c!important">換算/時<small>K÷N</small></th>
             <th style="background:#1a3a5c!important">效率%</th>
             <th style="background:#1a4a2e!important">效率卷數<small>N</small></th>
             <th style="background:#1a4a2e!important">加權工時<small>O</small></th>
@@ -508,19 +508,19 @@ function renderTab2(weld, back, proc) {
         <td>—</td><td>—</td><td>—</td><td>—</td>
         <td>—</td><td>—</td><td>—</td></tr>`;
     }
-    const wCPerP = m.hasData && m.weightedHours > 0 ? m.effScore / m.weightedHours : null;
+    const wCPerP = m.hasData && m.sumN > 0 ? m.effScore / m.sumN : null;
     const wPct   = wCPerP !== null ? weldPct(wCPerP) : { str: '—', cls: '' };
     const bNPerO = b?.hasData && b.weightedHours > 0 ? b.effRolls / b.weightedHours : null;
     const bEff   = bNPerO !== null ? bNPerO / TARGET_BACK : null;
     const bCls   = bEff === null ? '' : bEff >= 1 ? 'eff-high' : bEff >= 0.9 ? 'eff-mid' : 'eff-low';
     const pUtil  = p ? p.utilization : null;
     const pCls   = pUtil === null ? '' : pUtil >= 90 ? 'eff-high' : pUtil >= 80 ? 'eff-mid' : 'eff-low';
-    if (m.hasData) { ytdWC += m.effScore; ytdWH += m.weightedHours; ytdOK = true; }
+    if (m.hasData) { ytdWC += m.effScore; ytdWH += m.sumN; ytdOK = true; }
     if (b?.hasData) { ytdBN += b.effRolls; ytdBH += b.weightedHours; }
     return `<tr class="text-center">
       <td class="fw-semibold">${m.month} 月</td>
       <td class="text-end">${m.hasData ? fmt2(m.effScore) : '—'}</td>
-      <td class="text-end">${m.hasData ? fmt2(m.weightedHours) : '—'}</td>
+      <td class="text-end">${m.hasData ? fmt2(m.sumN) : '—'}</td>
       <td class="text-end">${wCPerP !== null ? wCPerP.toFixed(2) : '—'}</td>
       <td class="${wPct.cls}">${wPct.str}</td>
       <td class="text-end">${b?.hasData ? fmt2(b.effRolls) : '—'}</td>
@@ -576,9 +576,9 @@ function renderTab2(weld, back, proc) {
     const isHoliday = !wD && !bD && !pD && (dateObj.getDay() === 0 || isPast);
 
     if (wD || bD || pD) {
-      if (wD) { dWC += wD.effScore; dWH += wD.weightedHours; dWOK = true; }
+      if (wD) { dWC += wD.effScore; dWH += wD.sumN; dWOK = true; }
       if (bD) { dBN += bD.effRolls; dBH += bD.weightedHours; }
-      const wCPerP = wD && wD.weightedHours > 0 ? wD.effScore / wD.weightedHours : null;
+      const wCPerP = wD && wD.sumN > 0 ? wD.effScore / wD.sumN : null;
       const wPct   = wCPerP !== null ? weldPct(wCPerP) : { str: '—', cls: '' };
       const bNPerO = bD && bD.weightedHours > 0 ? bD.effRolls / bD.weightedHours : null;
       const bEff   = bNPerO !== null ? bNPerO / TARGET_BACK : null;
@@ -588,7 +588,7 @@ function renderTab2(weld, back, proc) {
       drows.push(`<tr>
         <td class="text-center fw-semibold">${cmonth}/${day}</td>
         <td class="text-end">${wD ? fmt2(wD.effScore) : '—'}</td>
-        <td class="text-end">${wD ? fmt2(wD.weightedHours) : '—'}</td>
+        <td class="text-end">${wD ? fmt2(wD.sumN) : '—'}</td>
         <td class="text-end">${wCPerP !== null ? wCPerP.toFixed(2) : '—'}</td>
         <td class="text-center ${wPct.cls}">${wPct.str}</td>
         <td class="text-end">${bD ? fmt2(bD.effRolls) : '—'}</td>

@@ -526,7 +526,7 @@ function getWeldingReport_() {
   const currentYear  = Number(Utilities.formatDate(now, tz, 'yyyy'));
   const currentMonth = Number(Utilities.formatDate(now, tz, 'MM'));
 
-  // 歷史月報匯總（A=年, B=月, C=效率換算, D=加權工時）
+  // 歷史月報匯總（A=年, B=月, C=效率換算, D=N欄工時）
   const histMap = {};
   const histSheet = ss.getSheetByName('焊接月報匯總');
   if (histSheet) {
@@ -536,12 +536,12 @@ function getWeldingReport_() {
       if (!y || !m) continue;
       histMap[`${y}-${m}`] = {
         effScore: Number(hd[i][2]) || 0,
-        weightedHours: Number(hd[i][3]) || 0
+        sumN: Number(hd[i][3]) || 0
       };
     }
   }
 
-  // 焊接記錄：col 2=工號, 4=上班時數, 5=異常時數, 10=效率換算
+  // 焊接記錄：col 10=效率換算(K), col 13=N欄工時
   const monthlyDet = {};
   const dailyDet   = {};
 
@@ -553,12 +553,10 @@ function getWeldingReport_() {
       const dateStr  = rawDate instanceof Date
         ? Utilities.formatDate(rawDate, tz, 'yyyy/MM/dd')
         : String(rawDate || '').trim();
-      const empId    = String(rows[i][2] || '').trim();
-      const workH    = Number(rows[i][4]) || 0;
-      const abnH     = Number(rows[i][5]) || 0;
       const effScore = Number(rows[i][10]) || 0;
+      const nHours   = Number(rows[i][13]) || 0;
 
-      if (!dateStr || !workH) continue;
+      if (!dateStr) continue;
 
       const parts = dateStr.split(/[\/\-]/);
       if (parts.length < 3) continue;
@@ -567,24 +565,15 @@ function getWeldingReport_() {
       const day   = Number(parts[2]);
       if (year !== currentYear) continue;
 
-      const P         = workH - abnH;
-      const empDayKey = `${empId}|${dateStr}`;
-
-      if (!monthlyDet[month]) monthlyDet[month] = { effScore: 0, weightedHours: 0, empDays: {} };
-      if (!monthlyDet[month].empDays[empDayKey]) {
-        monthlyDet[month].empDays[empDayKey] = true;
-        monthlyDet[month].weightedHours += P;
-      }
+      if (!monthlyDet[month]) monthlyDet[month] = { effScore: 0, sumN: 0 };
       monthlyDet[month].effScore += effScore;
+      monthlyDet[month].sumN     += nHours;
 
       if (month === currentMonth) {
         const dayKey = `${String(month).padStart(2,'0')}/${String(day).padStart(2,'0')}`;
-        if (!dailyDet[dayKey]) dailyDet[dayKey] = { effScore: 0, weightedHours: 0, empSet: {} };
-        if (!dailyDet[dayKey].empSet[empId]) {
-          dailyDet[dayKey].empSet[empId] = true;
-          dailyDet[dayKey].weightedHours += P;
-        }
+        if (!dailyDet[dayKey]) dailyDet[dayKey] = { effScore: 0, sumN: 0 };
         dailyDet[dayKey].effScore += effScore;
+        dailyDet[dayKey].sumN     += nHours;
       }
     }
   }
@@ -595,14 +584,14 @@ function getWeldingReport_() {
     if (det) {
       monthly.push({ month: m,
         effScore: Math.round(det.effScore * 100) / 100,
-        weightedHours: Math.round(det.weightedHours * 100) / 100,
+        sumN: Math.round(det.sumN * 100) / 100,
         hasData: true, isHistorical: false });
     } else {
       const hist = histMap[`${currentYear}-${m}`];
-      if (hist && (hist.effScore || hist.weightedHours)) {
+      if (hist && (hist.effScore || hist.sumN)) {
         monthly.push({ month: m,
           effScore: Math.round(hist.effScore * 100) / 100,
-          weightedHours: Math.round(hist.weightedHours * 100) / 100,
+          sumN: Math.round(hist.sumN * 100) / 100,
           hasData: true, isHistorical: true });
       } else {
         monthly.push({ month: m, hasData: false, isHistorical: false });
@@ -614,7 +603,7 @@ function getWeldingReport_() {
     const dd = dailyDet[dayKey];
     return { date: dayKey, day: Number(dayKey.split('/')[1]),
       effScore: Math.round(dd.effScore * 100) / 100,
-      weightedHours: Math.round(dd.weightedHours * 100) / 100 };
+      sumN: Math.round(dd.sumN * 100) / 100 };
   }).sort((a, b) => a.day - b.day);
 
   // 機台數量（開機台數備註 D欄，index 3）
